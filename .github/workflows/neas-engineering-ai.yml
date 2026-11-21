@@ -1,0 +1,49 @@
+name: NEAS Engineering AI Release Candidate
+
+on:
+  push:
+    branches:
+      - feat/neas-engineering-ai-production-system-2026-11-22
+  pull_request:
+    branches:
+      - fix/neas-engineering-ai-recovery-2026-11
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-engineering-ai-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Tests, type-check, dependency audit and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run regression tests
+        run: npm test
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Dependency security audit
+        run: npm audit --audit-level=high
+
+      - name: Build production bundle
+        run: npm run build
