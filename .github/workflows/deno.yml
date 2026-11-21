@@ -16,15 +16,15 @@ concurrency:
 
 jobs:
   validate:
-    name: Lint, type-check, audit and production build
+    name: Lint, type-check, tests, audit and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -37,7 +37,10 @@ jobs:
         run: npm run lint
 
       - name: Type-check
-        run: npx tsc --noEmit
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test -- --passWithNoTests
 
       - name: Dependency security audit
         run: npm audit --audit-level=high

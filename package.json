@@ -16,7 +16,8 @@
     "adscout": "tsx scripts/adscout.ts",
     "lab-sync": "tsx scripts/lab-sync.ts",
     "lab-agent": "tsx scripts/lab-agent.ts",
-    "lab-e2e": "tsx scripts/lab-e2e-dry.ts"
+    "lab-e2e": "tsx scripts/lab-e2e-dry.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@miosa/sdk": "^3.2.5",
@@ -27,28 +28,38 @@
     "better-sqlite3": "^11.3.0",
     "d3-force": "^3.0.0",
     "imapflow": "^1.4.0",
-    "lucide-react": "^0.441.0",
-    "next": "^14.2.13",
+    "lucide-react": "^0.511.0",
+    "next": "16.4.6",
     "node-ical": "^0.26.1",
     "nodemailer": "^9.0.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
     "simple-icons": "^16.27.0",
     "stripe": "^22.2.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/postprocessing": "^3.0.4",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.5.5",
     "@types/nodemailer": "^8.0.1",
-    "@types/react": "^18.3.8",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47",
+    "postcss": "^8.5.26",
     "tailwindcss": "^3.4.12",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
-    "vitest": "^2.1.1"
+    "vitest": "^5.1.1",
+    "@types/three": "^0.184.1",
+    "@eslint/eslintrc": "^3.3.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": "22.x"
+  }
 }

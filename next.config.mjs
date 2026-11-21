@@ -34,11 +34,8 @@ const nextConfig = {
       { source: '/content-media/ad-engine/:path*', destination: '/content-media/creative-engine/:path*' },
     ];
   },
-  experimental: {
-    serverComponentsExternalPackages: ['better-sqlite3', 'node-ical', 'nodemailer'],
-    // instrumentation.ts: warms the live-read caches at boot (lib/warm.ts) and starts the cron tick when GLADOS_CRON=1 (SPEC O7).
-    instrumentationHook: true,
-  },
+  serverExternalPackages: ['better-sqlite3', 'node-ical', 'nodemailer'],
+
 };
 
 export default nextConfig;
