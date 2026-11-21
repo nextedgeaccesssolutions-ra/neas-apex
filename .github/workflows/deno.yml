@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Lint, type-check, audit and production build
+    name: Security tests, type-check, audit and production build
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -33,11 +33,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Security regression tests
+        run: npm test
 
       - name: Type-check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Dependency security audit
         run: npm audit --audit-level=high

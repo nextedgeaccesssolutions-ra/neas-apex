@@ -1,3 +1,4 @@
+/* Existing NEAS APEX global styles */
 :root {
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
@@ -54,4 +55,145 @@ body {
 /* Status-bar hint is hidden on small screens. */
 @media (max-width: 700px) {
   .sb-hint { display: none; }
+}
+
+
+/* NEAS first-party voice dock: replaces the third-party branded embed. */
+.neas-ai-dock {
+  position: fixed;
+  z-index: 90;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: min(390px, calc(100vw - 24px));
+  color: #f4ead8;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.neas-ai-dock-bar {
+  display: flex; align-items: center; gap: 10px; min-height: 66px;
+  padding: 9px 11px; border: 1px solid rgba(202,147,50,.45); border-radius: 18px;
+  background: linear-gradient(115deg, rgba(7,29,41,.97), rgba(5,13,19,.97));
+  box-shadow: 0 12px 42px rgba(0,0,0,.48), 0 0 24px rgba(202,147,50,.12);
+  backdrop-filter: blur(16px);
+}
+.neas-ai-core-button {
+  flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid #ca9332; color: #ebc07e; background: radial-gradient(circle, #214354, #071d29 70%);
+  box-shadow: 0 0 18px rgba(202,147,50,.32); cursor: pointer;
+}
+.neas-ai-core-glyph { font-weight: 800; font-size: 19px; }
+.neas-ai-dock-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
+.neas-ai-dock-copy strong { font-size: 11px; letter-spacing: .15em; white-space: nowrap; }
+.neas-ai-dock-copy small { color: #ebc07e; font-size: 9px; letter-spacing: .16em; }
+.neas-ai-start-button, .neas-ai-mini-button, .neas-ai-expand-button {
+  min-height: 38px; border-radius: 11px; border: 1px solid rgba(235,192,126,.45);
+  padding: 0 11px; color: #f5e5c6; background: rgba(202,147,50,.13);
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; cursor: pointer;
+}
+.neas-ai-start-button { background: #ca9332; color: #071d29; border-color: #ebc07e; }
+.neas-ai-mini-button.stop { border-color: rgba(255,111,93,.55); color: #ffc2b8; }
+.neas-ai-expand-button { width: 36px; padding: 0; font-size: 17px; }
+.neas-ai-panel {
+  margin-bottom: 10px; overflow: hidden; border-radius: 20px;
+  border: 1px solid rgba(202,147,50,.48);
+  background: linear-gradient(150deg, rgba(7,29,41,.985), rgba(3,10,15,.985));
+  box-shadow: 0 18px 55px rgba(0,0,0,.58), 0 0 26px rgba(202,147,50,.13);
+}
+.neas-ai-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 15px; border-bottom: 1px solid rgba(235,192,126,.14); }
+.neas-ai-brand { display: flex; align-items: center; gap: 10px; }
+.neas-ai-brand strong { display: block; font-size: 11px; letter-spacing: .15em; }
+.neas-ai-brand small { display: block; margin-top: 3px; color: #b99b6a; font-size: 8px; letter-spacing: .18em; }
+.neas-ai-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #8b8376; box-shadow: 0 0 9px currentColor; }
+.neas-ai-status-dot.is-live { background: #71d9b2; color: #71d9b2; }
+.neas-ai-icon-button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #604a2a; background: transparent; color: #ebc07e; font-size: 20px; }
+.neas-ai-avatar-stage { position: relative; display: grid; place-items: center; height: 142px; overflow: hidden; }
+.neas-ai-orbit { position: absolute; width: 118px; height: 118px; border: 1px solid rgba(202,147,50,.45); border-radius: 50%; box-shadow: 0 0 18px rgba(202,147,50,.13); }
+.neas-ai-orbit.orbit-one { animation: neasOrbitSpin 12s linear infinite; border-style: dashed; }
+.neas-ai-orbit.orbit-two { width: 90px; height: 90px; border-color: rgba(90,205,220,.38); animation: neasOrbitSpin 8s linear infinite reverse; }
+.neas-ai-avatar { position: relative; display: flex; align-items: center; justify-content: center; gap: 17px; width: 76px; height: 76px; border: 1px solid rgba(235,192,126,.65); border-radius: 50%; background: radial-gradient(circle at 35% 28%, #275266, #071d29 68%); box-shadow: inset 0 0 18px rgba(67,197,216,.26), 0 0 30px rgba(202,147,50,.25); animation: neasAvatarBreath 4s ease-in-out infinite; }
+.neas-ai-eye { width: 7px; height: 7px; border-radius: 50%; background: #a9f4f5; box-shadow: 0 0 10px #69dce8; animation: neasAvatarBlink 5s infinite; }
+.neas-ai-mouth { position: absolute; left: 50%; top: 48px; width: 17px; height: 3px; border-radius: 50%; transform: translateX(-50%); background: #ebc07e; box-shadow: 0 0 8px #ca9332; }
+.neas-ai-avatar-stage.is-speaking .neas-ai-avatar { box-shadow: inset 0 0 24px rgba(67,197,216,.45), 0 0 38px rgba(202,147,50,.48); }
+.neas-ai-avatar-stage.is-speaking .neas-ai-mouth { animation: neasAvatarSpeak .17s ease-in-out infinite alternate; }
+.neas-ai-avatar-stage.is-listening .neas-ai-orbit { border-color: rgba(90,220,190,.72); }
+.neas-ai-avatar-stage.is-thinking .neas-ai-avatar { animation-duration: .8s; }
+.neas-ai-wave { position: absolute; bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 3px; height: 17px; }
+.neas-ai-wave i { width: 2px; height: 14px; border-radius: 3px; background: #ca9332; transform-origin: center; transition: transform 70ms linear; }
+.neas-ai-state-row { display: flex; justify-content: space-between; padding: 0 15px 8px; color: #ebc07e; font-size: 8px; letter-spacing: .17em; }
+.neas-ai-messages { display: flex; flex-direction: column; gap: 9px; max-height: 190px; overflow-y: auto; padding: 10px 14px; border-top: 1px solid rgba(235,192,126,.12); }
+.neas-ai-greeting { margin: 0; color: #eadbc2; font-size: 12px; line-height: 1.55; }
+.neas-ai-message { max-width: 92%; padding: 8px 10px; border-radius: 11px; background: rgba(255,255,255,.055); }
+.neas-ai-message.from-user { align-self: flex-end; background: rgba(202,147,50,.17); }
+.neas-ai-message small { color: #d5a957; font-size: 8px; letter-spacing: .15em; }
+.neas-ai-message p { margin: 4px 0 0; color: #f4ead8; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+.neas-ai-error { padding: 8px; border: 1px solid rgba(255,111,93,.45); border-radius: 9px; color: #ffc2b8; font-size: 11px; }
+.neas-ai-composer { display: flex; gap: 7px; padding: 9px 12px; border-top: 1px solid rgba(235,192,126,.12); }
+.neas-ai-composer input { flex: 1; min-width: 0; height: 39px; border: 1px solid rgba(235,192,126,.24); border-radius: 10px; padding: 0 11px; outline: none; background: rgba(0,0,0,.24); color: #fff1d8; font-size: 12px; }
+.neas-ai-composer input:focus { border-color: #ca9332; }
+.neas-ai-composer button { width: 40px; border: 0; border-radius: 10px; background: #ca9332; color: #071d29; font-weight: 800; }
+.neas-ai-composer button:disabled { opacity: .4; }
+.neas-ai-actions { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 12px 12px; }
+.neas-ai-actions button { flex: 1; min-height: 34px; border: 1px solid rgba(235,192,126,.28); border-radius: 9px; padding: 0 8px; background: rgba(202,147,50,.1); color: #f2d6a4; font-size: 9px; font-weight: 700; letter-spacing: .08em; }
+.neas-ai-actions button.primary { background: #ca9332; color: #071d29; border-color: #ebc07e; }
+.neas-ai-actions button:disabled, .neas-ai-start-button:disabled { opacity: .55; cursor: wait; }
+@keyframes neasOrbitSpin { to { transform: rotate(360deg); } }
+@keyframes neasAvatarBreath { 0%,100% { transform: scale(.98); } 50% { transform: scale(1.04); } }
+@keyframes neasAvatarBlink { 0%,43%,47%,100% { transform: scaleY(1); } 45% { transform: scaleY(.12); } }
+@keyframes neasAvatarSpeak { from { width: 14px; height: 3px; } to { width: 19px; height: 10px; } }
+@media (max-width: 600px) {
+  .neas-ai-dock { right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); width: calc(100vw - 20px); }
+  .neas-ai-dock-bar { min-height: 60px; gap: 7px; padding: 7px 8px; }
+  .neas-ai-core-button { flex-basis: 40px; width: 40px; height: 40px; }
+  .neas-ai-dock-copy strong { font-size: 10px; }
+  .neas-ai-dock-copy small { font-size: 8px; }
+  .neas-ai-start-button, .neas-ai-mini-button { min-height: 36px; padding: 0 8px; font-size: 9px; }
+  .neas-ai-panel { max-height: min(66vh, 570px); }
+  .neas-ai-messages { max-height: min(20vh, 160px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .neas-ai-orbit, .neas-ai-avatar, .neas-ai-eye, .neas-ai-mouth { animation: none !important; }
+}
+
+
+.neas-ai-welcome-toast {
+  margin-bottom: 9px;
+  padding: 12px 14px;
+  border: 1px solid rgba(202,147,50,.42);
+  border-radius: 15px;
+  background: linear-gradient(120deg, rgba(7,29,41,.97), rgba(5,13,19,.97));
+  color: #f4ead8;
+  box-shadow: 0 10px 32px rgba(0,0,0,.42), 0 0 18px rgba(202,147,50,.12);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.neas-ai-core-face {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #275266, #071d29 72%);
+  box-shadow: inset 0 0 9px rgba(67,197,216,.28), 0 0 10px rgba(202,147,50,.24);
+  animation: neasAvatarBreath 3.5s ease-in-out infinite;
+}
+.neas-ai-core-face .neas-ai-core-eye {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #a9f4f5;
+  box-shadow: 0 0 5px #69dce8;
+  animation: neasAvatarBlink 5s infinite;
+}
+.neas-ai-core-face .neas-ai-core-mouth {
+  position: absolute;
+  left: 50%;
+  top: 19px;
+  width: 9px;
+  height: 2px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: #ebc07e;
 }

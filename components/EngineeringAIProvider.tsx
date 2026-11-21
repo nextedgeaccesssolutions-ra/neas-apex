@@ -1,0 +1,8 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { ConversationProvider } from "@elevenlabs/react";
+
+export default function EngineeringAIProvider({ children }: { children: ReactNode }) {
+  return <ConversationProvider>{children}</ConversationProvider>;
+}
