@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useConversation } from "@elevenlabs/react";
 import EngineeringAIControls from "./EngineeringAIControls";
+import EngineeringAITaskEngine from "./EngineeringAITaskEngine";
 import EngineeringAIStatus from "./EngineeringAIStatus";
 import EngineeringAIWaveform from "./EngineeringAIWaveform";
 import EngineeringAIWelcome, { NEAS_ENGINEERING_AI_WELCOME } from "./EngineeringAIWelcome";
@@ -192,6 +193,25 @@ export default function ElevenLabsVoiceWidget() {
     }
   }, [endSession, startSession, status]);
 
+  const launchTask = useCallback(async (prompt: string) => {
+    if (status === "connecting") return;
+    if (status !== "connected") {
+      const connected = await startText();
+      if (!connected) return;
+    }
+    setMessages((previous) => [...previous, { id: `task:${Date.now()}:${previous.length}`, role: "user", text: prompt }]);
+    setPending(true);
+    dispatchProcessing(true);
+    try {
+      sendUserActivity();
+      sendUserMessage(prompt);
+    } catch {
+      setPending(false);
+      dispatchProcessing(false);
+      setError("The engineering task could not be submitted. Please retry.");
+    }
+  }, [sendUserActivity, sendUserMessage, startText, status]);
+
   const stopSession = useCallback(async () => {
     setPending(false);
     dispatchProcessing(false);
@@ -260,6 +280,7 @@ export default function ElevenLabsVoiceWidget() {
             <div ref={bottomRef} />
           </div>
           {error && <div role="alert" style={{ border: "1px solid rgba(248,113,113,.35)", background: "rgba(127,29,29,.16)", color: "#fecaca", borderRadius: 9, padding: "8px 10px", fontSize: 10, lineHeight: 1.45 }}>{error}</div>}
+          <EngineeringAITaskEngine disabled={status === "connecting"} onLaunch={(prompt) => void launchTask(prompt)} />
           <form onSubmit={submitMessage} style={{ display: "flex", gap: 7 }}>
             <input value={input} onChange={(event) => { setInput(event.target.value); if (status === "connected") sendUserActivity(); }} placeholder="Ask an engineering question…" aria-label="Message NEAS Engineering AI" maxLength={4000} style={{ minWidth: 0, flex: 1, color: "#f5f2ea", background: "rgba(0,0,0,.25)", border: "1px solid rgba(202,147,50,.28)", borderRadius: 9, padding: "10px 11px", fontSize: 11, outline: "none" }} />
             <button type="submit" disabled={!input.trim() || status === "connecting"} style={{ border: "1px solid rgba(202,147,50,.35)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 8, padding: "8px 11px", fontSize: 10, fontWeight: 900, opacity: !input.trim() || status === "connecting" ? .45 : 1, cursor: "pointer" }}>SEND</button>
