@@ -23,7 +23,7 @@ class OrbBoundary extends React.Component {
   constructor(props) { super(props); this.state = { dead: false }; this._tries = 0 }
   static getDerivedStateFromError() { return { dead: true } }
   componentDidCatch(err) {
-    try { console.warn('[orb] 3D crashed â€” hiding orb:', err?.message) } catch {}
+    try { console.warn('[orb] 3D crashed â€” hiding orb:', err?.message) } catch { /* intentionally ignore optional rendering and logging failures */ }
     clearTimeout(this._t)
     // Retry a remount a few times (context often recovers); after that, stay hidden â€” the app is fine
     // without the decorative orb, and a permanently-lost context shouldn't thrash forever.
@@ -459,12 +459,12 @@ export default function ApexCore3D({ state = 'idle', variant = 'geodesic', onCli
           const canvas = gl.domElement
           canvas.addEventListener('webglcontextlost', (e) => {
             e.preventDefault()
-            try { console.warn('[orb] WebGL context lost â€” pausing render') } catch {}
-            try { setFrameloop('never') } catch {}
+            try { console.warn('[orb] WebGL context lost â€” pausing render') } catch { /* intentionally ignore optional rendering and logging failures */ }
+            try { setFrameloop('never') } catch { /* intentionally ignore optional rendering and logging failures */ }
           }, false)
           canvas.addEventListener('webglcontextrestored', () => {
-            try { console.warn('[orb] WebGL context restored â€” resuming') } catch {}
-            try { setFrameloop('always') } catch {}
+            try { console.warn('[orb] WebGL context restored â€” resuming') } catch { /* intentionally ignore optional rendering and logging failures */ }
+            try { setFrameloop('always') } catch { /* intentionally ignore optional rendering and logging failures */ }
           }, false)
         }}
       >{/* canvas must NOT capture pointers â€” it sat over the reasoning web and ate every agent click.
