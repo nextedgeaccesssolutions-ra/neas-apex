@@ -43,15 +43,6 @@ export default function ElevenLabsVoiceWidget() {
           return [...currentLines, { id: makeId(), role: "assistant", text }];
         });
       }}
-      onUserTranscript={(event) => {
-        const text = typeof event.message === "string" ? event.message.trim() : "";
-        if (!text) return;
-        setLines((currentLines) => {
-          const last = currentLines[currentLines.length - 1];
-          if (last?.role === "user" && last.text === text) return currentLines;
-          return [...currentLines, { id: makeId(), role: "user", text }];
-        });
-      }}
       onError={(error) => setProviderError(String(error || "Voice connection failed."))}
     >
       <NEASVoicePanel
@@ -88,7 +79,17 @@ function NEASVoicePanel({
     endSession,
     sendUserMessage,
     getOutputVolume,
-  } = useConversation();
+  } = useConversation({
+    onUserTranscript: (event) => {
+      const text = typeof event.message === "string" ? event.message.trim() : "";
+      if (!text) return;
+      setLines((currentLines) => {
+        const last = currentLines[currentLines.length - 1];
+        if (last?.role === "user" && last.text === text) return currentLines;
+        return [...currentLines, { id: makeId(), role: "user", text }];
+      });
+    },
+  });
 
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
