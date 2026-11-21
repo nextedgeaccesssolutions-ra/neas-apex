@@ -1,5 +1,5 @@
 type Props = {
-  status: "disconnected" | "connecting" | "connected";
+  status: "disconnected" | "connecting" | "connected" | "error";
   isSpeaking: boolean;
   isListening: boolean;
   isProcessing: boolean;
