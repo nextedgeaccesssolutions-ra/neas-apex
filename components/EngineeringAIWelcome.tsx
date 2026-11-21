@@ -1,5 +1,5 @@
 export const NEAS_ENGINEERING_AI_WELCOME =
-  "Welcome to NextEdge Access Solutions. I am NEAS Engineering AI, your intelligent engineering assistant. I can help you with rope access, renewable energy, offshore and onshore operations, industrial engineering, inspections, technical calculations, project planning, and engineering solutions. How may I assist you today?";
+  "Welcome to NEAS Engineering Intelligence. I am NEAS Engineering AI, your engineering and project intelligence assistant from NextEdge Access Solutions. I can assist with technical engineering, rope access, renewable energy, industrial maintenance, safety, project execution, and commercial planning. How can I support your engineering requirements today?";
 
 export default function EngineeringAIWelcome() {
   return (

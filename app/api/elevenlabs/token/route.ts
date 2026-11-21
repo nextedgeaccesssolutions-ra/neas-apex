@@ -4,7 +4,7 @@ import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-sec
 const AGENT_ID =
   process.env.ELEVENLABS_AGENT_ID || "agent_8601m7zrgsg4f98srgkekzq7ana9";
 const BRANCH_ID =
-  process.env.ELEVENLABS_AGENT_BRANCH_ID || "agtbrch_7901m7ztt97yecs8wqrvrk9zzwqy";
+  process.env.ELEVENLABS_AGENT_BRANCH_ID || "agtbrch_7901m7zzfke5f0jryg92t2zcwnae";
 const TOKEN_ENDPOINT = "https://api.elevenlabs.io/v1/convai/conversation/token";
 
 export const runtime = "nodejs";
