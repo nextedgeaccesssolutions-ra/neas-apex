@@ -7,7 +7,6 @@ import EngineeringAIStatus from "./EngineeringAIStatus";
 import EngineeringAIWaveform from "./EngineeringAIWaveform";
 import EngineeringAIWelcome, { NEAS_ENGINEERING_AI_WELCOME } from "./EngineeringAIWelcome";
 
-const AGENT_ID = "agent_8601m7zrgsg4f98srgkekzq7ana9";
 const GREETING_KEY = "neas-engineering-ai-voice-greeting-spoken";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
