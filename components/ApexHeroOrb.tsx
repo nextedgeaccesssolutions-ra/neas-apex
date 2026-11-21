@@ -76,12 +76,7 @@ export default function ApexHeroOrb({ state: controlled, onStateChange, interact
         </div>
         <div className={`apex-core-css apex-core-${state}${reducedMotion ? " apex-core-static" : ""}`} aria-hidden="true">
           <span className="apex-core-halo" />
-          <span className="apex-core-face">
-            <i className="apex-core-eye apex-core-eye-left" />
-            <i className="apex-core-eye apex-core-eye-right" />
-            <i className="apex-core-mouth" />
-          </span>
-          <span className="apex-core-particles" />
+            <span className="apex-core-particles" />
         </div>
       </div>
     </div>
