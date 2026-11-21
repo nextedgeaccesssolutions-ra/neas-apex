@@ -136,15 +136,15 @@ export default function ElevenLabsVoiceWidget() {
     setPending(false);
     try {
       if (status === "connected") await endSession();
-      const tokenResponse = await fetch("/api/elevenlabs/token", { cache: "no-store" });
-      const tokenData = await tokenResponse.json().catch(() => ({})) as { token?: string; error?: string };
-      if (!tokenResponse.ok || typeof tokenData.token !== "string" || tokenData.token.length === 0) {
-        throw new Error(tokenData.error || "Voice authentication is not configured. Add ELEVENLABS_API_KEY in Vercel to enable voice.");
+      const signedResponse = await fetch("/api/elevenlabs/signed-url", { cache: "no-store" });
+      const signedData = await signedResponse.json().catch(() => ({})) as { signedUrl?: string; error?: string };
+      if (!signedResponse.ok || typeof signedData.signedUrl !== "string" || signedData.signedUrl.length === 0) {
+        throw new Error(signedData.error || "Voice authentication is not configured. Add ELEVENLABS_API_KEY in Vercel to enable voice.");
       }
 
       const greetingAlreadySpoken = window.sessionStorage.getItem(GREETING_KEY) === "1";
       await startSession({
-        conversationToken: tokenData.token,
+        signedUrl: signedData.signedUrl,
         connectionType: "websocket",
         ...(greetingAlreadySpoken ? { overrides: { agent: { firstMessage: "" } } } : {}),
       });
