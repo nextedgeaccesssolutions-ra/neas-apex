@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
-import { consumeRateLimit, isSameOriginBrowserRequest } from "../lib/neas-api-security";
+import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
 
 describe("NEAS API request security", () => {
   it("accepts a same-origin browser request", () => {
