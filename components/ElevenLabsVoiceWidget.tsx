@@ -8,8 +8,6 @@ import EngineeringAIWaveform from "./EngineeringAIWaveform";
 import EngineeringAIWelcome, { NEAS_ENGINEERING_AI_WELCOME } from "./EngineeringAIWelcome";
 
 const GREETING_KEY = "neas-engineering-ai-voice-greeting-spoken";
-const AGENT_ID = "agent_8601m7zrgsg4f98srgkekzq7ana9";
-const BRANCH_ID = "agtbrch_7901m7ztt97yecs8wqrvrk9zzwqy";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
 type IncomingMessage = { message: unknown; source?: string; role?: string; event_id?: number | string; response_id?: string };
@@ -139,28 +137,16 @@ export default function ElevenLabsVoiceWidget() {
     try {
       if (status === "connected") await endSession();
 
-      let conversationToken: string | undefined;
-      let agentId = AGENT_ID;
-      let branchId = BRANCH_ID;
-      const tokenResponse = await fetch("/api/elevenlabs/token", { cache: "no-store" });
-      const tokenData = await tokenResponse.json().catch(() => ({})) as {
-        token?: string; agentId?: string; branchId?: string; error?: string;
-      };
-      if (tokenResponse.ok && typeof tokenData.token === "string" && tokenData.token.length > 0) {
-        conversationToken = tokenData.token;
-        if (typeof tokenData.agentId === "string") agentId = tokenData.agentId;
-        if (typeof tokenData.branchId === "string") branchId = tokenData.branchId;
-      } else if (tokenResponse.status !== 503) {
-        throw new Error(tokenData.error || "Unable to prepare a secure voice session.");
+      const signedResponse = await fetch("/api/elevenlabs/signed-url", { cache: "no-store" });
+      const signedData = await signedResponse.json().catch(() => ({})) as { signedUrl?: string; error?: string };
+      if (!signedResponse.ok || typeof signedData.signedUrl !== "string" || !signedData.signedUrl) {
+        throw new Error(signedData.error || "Unable to prepare a secure voice session.");
       }
 
-      // If the server API key has not yet been configured, the existing
-      // NEAS agent remains usable through its production-origin allowlist.
       const greetingAlreadySpoken = window.sessionStorage.getItem(GREETING_KEY) === "1";
       await startSession({
-        ...(conversationToken ? { conversationToken } : { agentId }),
-        branchId,
-        connectionType: "webrtc",
+        signedUrl: signedData.signedUrl,
+        connectionType: "websocket",
         ...(greetingAlreadySpoken ? { overrides: { agent: { firstMessage: "" } } } : {}),
       });
       sessionModeRef.current = "voice";
@@ -186,18 +172,14 @@ export default function ElevenLabsVoiceWidget() {
     try {
       if (status === "connected") await endSession();
 
-      let signedUrl: string | undefined;
       const signedResponse = await fetch("/api/elevenlabs/signed-url", { cache: "no-store" });
       const signedData = await signedResponse.json().catch(() => ({})) as { signedUrl?: string; error?: string };
-      if (signedResponse.ok && typeof signedData.signedUrl === "string" && signedData.signedUrl.length > 0) {
-        signedUrl = signedData.signedUrl;
-      } else if (signedResponse.status !== 503) {
+      if (!signedResponse.ok || typeof signedData.signedUrl !== "string" || !signedData.signedUrl) {
         throw new Error(signedData.error || "Text chat is temporarily unavailable.");
       }
 
       await startSession({
-        ...(signedUrl ? { signedUrl } : { agentId: AGENT_ID }),
-        branchId: BRANCH_ID,
+        signedUrl: signedData.signedUrl,
         connectionType: "websocket",
         overrides: { conversation: { textOnly: true }, agent: { firstMessage: "" } },
       });
