@@ -230,3 +230,7 @@
 @media (prefers-reduced-motion: reduce) {
   .apex-core-css, .apex-core-halo, .apex-core-particles, .apex-core-eye, .apex-core-mouth { animation: none !important; }
 }
+
+.apex-core-listening { animation-duration: 2.6s; box-shadow: inset 0 0 26px rgba(68,204,232,.45), 0 0 30px rgba(202,147,50,.38), 0 0 84px rgba(32,163,196,.28); }
+.apex-core-listening .apex-core-halo { border-color: rgba(75,214,233,.72); animation-duration: 3s; }
+.apex-core-listening .apex-core-eye { box-shadow: 0 0 10px #4bd6e9, 0 0 20px rgba(75,214,233,.9); }
