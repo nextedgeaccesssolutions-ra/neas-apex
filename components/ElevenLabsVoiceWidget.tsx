@@ -264,7 +264,6 @@ export default function ElevenLabsVoiceWidget() {
   return (
     <section style={panelStyle} aria-label="NEAS Engineering AI conversation">
       <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid rgba(202,147,50,.2)", background: "linear-gradient(100deg,rgba(202,147,50,.12),rgba(7,29,41,.1))" }}>
-        <div style={{ width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center", border: "1px solid rgba(235,192,126,.55)", color: "#EBC07E", boxShadow: "0 0 18px rgba(202,147,50,.18)", fontSize: 15, fontWeight: 800 }}>N</div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 10, letterSpacing: ".18em", color: "#EBC07E", fontWeight: 800 }}>NEAS ENGINEERING AI</div>
           <div style={{ fontSize: 9, color: "rgba(245,242,234,.52)", marginTop: 3 }}>Engineering intelligence · Voice & text</div>
