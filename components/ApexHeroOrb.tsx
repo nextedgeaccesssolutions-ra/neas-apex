@@ -28,7 +28,7 @@ export default function ApexHeroOrb({ state: controlled, onStateChange, interact
 
   // Motion-sensitive users get the static golden ring without the particle sim.
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mq = globalThis.window.matchMedia("(prefers-reduced-motion: reduce)");
     const apply = () => setReducedMotion(mq.matches);
     apply();
     mq.addEventListener("change", apply);
