@@ -6,7 +6,6 @@ import {
 } from "@elevenlabs/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, FormEvent, SetStateAction } from "react";
-import "./neas-voice-widget.css";
 
 const WELCOME =
   "Welcome to NextEdge Access Solutions. I am NEAS Engineering AI, your intelligent engineering assistant. I can help you with rope access, renewable energy, offshore and onshore operations, industrial engineering, inspections, technical calculations, project planning, and engineering solutions. How may I assist you today?";
