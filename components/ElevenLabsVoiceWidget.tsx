@@ -324,9 +324,16 @@ function NEASVoicePanel({
         </section>
       )}
 
+      {!greetingDone && !expanded && (
+        <div className="neas-ai-welcome-toast" role="status">{WELCOME}</div>
+      )}
       <div className="neas-ai-dock-bar">
         <button className="neas-ai-core-button" type="button" onClick={() => setExpanded((value) => !value)} aria-label={expanded ? "Close NEAS AI" : "Open NEAS AI"}>
-          <span className="neas-ai-core-glyph">N</span>
+          <span className="neas-ai-core-face" aria-hidden="true">
+            <i className="neas-ai-core-eye" />
+            <i className="neas-ai-core-eye" />
+            <i className="neas-ai-core-mouth" />
+          </span>
         </button>
         <div className="neas-ai-dock-copy">
           <strong>NEAS AI</strong>
