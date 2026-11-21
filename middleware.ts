@@ -8,6 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_API_PATHS = new Set([
   "/api/weather",
   "/api/elevenlabs/token",
+  "/api/elevenlabs/signed-url",
 ]);
 
 export function middleware(request: NextRequest) {
