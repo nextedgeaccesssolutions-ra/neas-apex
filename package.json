@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "GladOS — an open-source personal operating system and AI agent command center for a one-person business",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "node scripts/serve.mjs dev",
     "build": "next build",
