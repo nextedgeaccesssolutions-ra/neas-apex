@@ -6,6 +6,7 @@ export const NEAS_ELEVENLABS_ENGINEERING_AI_BRANCH_ID =
 type ElevenLabsBranchEnvironment = {
   VERCEL_ENV?: string;
   ELEVENLABS_AGENT_BRANCH_ID?: string;
+  [key: string]: string | undefined;
 };
 
 /**
