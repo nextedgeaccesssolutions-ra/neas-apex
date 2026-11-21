@@ -11,7 +11,7 @@ const PUBLIC_API_PATHS = new Set([
   "/api/elevenlabs/token",
 ]);
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
