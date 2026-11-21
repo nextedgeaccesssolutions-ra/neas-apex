@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import ApexOrb from "./ApexOrb";
 import "./apex-orb.css";
 
@@ -51,8 +51,8 @@ export default function ApexHeroOrb({ state: controlled, onStateChange, interact
       {...(interactive
         ? {
             onClick: boost,
-            onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); boost(); } },
-            onMouseDown: (e: React.MouseEvent) => e.preventDefault(),
+            onKeyDown: (e: KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); boost(); } },
+            onMouseDown: (e: MouseEvent) => e.preventDefault(),
             role: "button",
             tabIndex: 0,
             "aria-label": "NEAS Engineering AI core - activate animation",
@@ -74,17 +74,15 @@ export default function ApexHeroOrb({ state: controlled, onStateChange, interact
         <div style={{ position: "absolute", left: 0, top: (STAGE_H - 520) / 2, pointerEvents: "none" }}>
           <ApexOrb state={state} variant="frame" onRingClick={undefined} />
         </div>
-        {!reducedMotion && (
-          <div className={`apex-core-css apex-core-${state}`} aria-hidden="true">
-            <span className="apex-core-halo" />
-            <span className="apex-core-face">
-              <i className="apex-core-eye apex-core-eye-left" />
-              <i className="apex-core-eye apex-core-eye-right" />
-              <i className="apex-core-mouth" />
-            </span>
-            <span className="apex-core-particles" />
-          </div>
-        )}
+        <div className={`apex-core-css apex-core-${state}${reducedMotion ? " apex-core-static" : ""}`} aria-hidden="true">
+          <span className="apex-core-halo" />
+          <span className="apex-core-face">
+            <i className="apex-core-eye apex-core-eye-left" />
+            <i className="apex-core-eye apex-core-eye-right" />
+            <i className="apex-core-mouth" />
+          </span>
+          <span className="apex-core-particles" />
+        </div>
       </div>
     </div>
   );
