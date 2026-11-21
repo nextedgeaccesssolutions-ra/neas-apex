@@ -27,5 +27,13 @@
     "@types/three": "^0.184.1",
     "eslint": "^9",
     "eslint-config-next": "15.3.3"
+  },
+  "overrides": {
+    "postcss": "8.5.33",
+    "brace-expansion": "5.0.4",
+    "js-yaml": "4.3.2",
+    "source-map-js": "1.2.2",
+    "@typescript-eslint/typescript-estree": "8.73.0",
+    "sharp": "0.35.5"
   }
 }
