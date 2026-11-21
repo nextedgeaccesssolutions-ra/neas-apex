@@ -1,9 +1,11 @@
 import ApexWorld from "@/components/ApexWorld";
 import ApexOverviewPanel from "@/components/ApexOverviewPanel";
 import ElevenLabsVoiceWidget from "@/components/ElevenLabsVoiceWidget";
+import EngineeringAIProvider from "@/components/EngineeringAIProvider";
 
 export default function Home() {
   return (
+    <EngineeringAIProvider>
     <main
       id="main"
       style={{ background: "#090807", color: "#f0ede8", position: "relative", overflow: "hidden" }}
@@ -28,5 +30,6 @@ export default function Home() {
         View on GitHub ↗
       </a>
     </main>
+    </EngineeringAIProvider>
   );
 }
