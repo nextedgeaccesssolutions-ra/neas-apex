@@ -5,18 +5,13 @@ import { useConversation } from "@elevenlabs/react";
 import EngineeringAIControls from "./EngineeringAIControls";
 import EngineeringAIStatus from "./EngineeringAIStatus";
 import EngineeringAIWaveform from "./EngineeringAIWaveform";
-import EngineeringAIWelcome from "./EngineeringAIWelcome";
+import EngineeringAIWelcome, { NEAS_ENGINEERING_AI_WELCOME } from "./EngineeringAIWelcome";
 
 const AGENT_ID = "agent_8601m7zrgsg4f98srgkekzq7ana9";
-const BRANCH_ID = "agtbrch_7901m7ztt97yecs8wqrvrk9zzwqy";
 const GREETING_KEY = "neas-engineering-ai-voice-greeting-spoken";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
-type IncomingMessage = { message: unknown; source: string };
-
-function record(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null ? value as Record<string, unknown> : null;
-}
+type IncomingMessage = { message: unknown; source?: string; role?: string; event_id?: number | string; response_id?: string };
 
 function stringField(value: unknown, key: string): string | null {
   const field = record(value)?.[key];
@@ -77,8 +72,7 @@ export default function ElevenLabsVoiceWidget() {
       seenMessageIds.current.add(id);
       return [...previous, { id, role, text }];
     });
-    if (role === "assistant") {
-      setPending(false);
+    if (role === "assistant") {\n      if (text === NEAS_ENGINEERING_AI_WELCOME && typeof window !== "undefined") window.sessionStorage.setItem(GREETING_KEY, "1");\n      setPending(false);
       dispatchProcessing(false);
     }
   }, []);
@@ -86,15 +80,7 @@ export default function ElevenLabsVoiceWidget() {
   const conversation = useConversation({
     onMessage: (event) => {
       const payload = event as unknown as IncomingMessage;
-      appendMessage(payload.source === "user" ? "user" : "assistant", payload.message);
-    },
-    onUserTranscript: (event) => {
-      appendMessage("user", event);
-      const transcript = record(event);
-      if (transcript?.is_final !== false && transcript?.isFinal !== false) {
-        setPending(true);
-        dispatchProcessing(true);
-      }
+      appendMessage(payload.source === "user" || payload.role === "user" ? "user" : "assistant", payload.message);
     },
     onConnect: () => setError(""),
     onDisconnect: () => {
@@ -145,27 +131,17 @@ export default function ElevenLabsVoiceWidget() {
     setPending(false);
     try {
       if (status === "connected") await endSession();
-      let token: string | undefined;
-      let agentId = AGENT_ID;
-      let branchId = BRANCH_ID;
       const tokenResponse = await fetch("/api/elevenlabs/token", { cache: "no-store" });
-      if (tokenResponse.ok) {
-        const tokenData = await tokenResponse.json() as { token?: string; agentId?: string; branchId?: string };
-        if (typeof tokenData.token === "string" && tokenData.token.length > 0) token = tokenData.token;
-        if (typeof tokenData.agentId === "string") agentId = tokenData.agentId;
-        if (typeof tokenData.branchId === "string") branchId = tokenData.branchId;
-      } else if (tokenResponse.status !== 503) {
-        const failure = await tokenResponse.json().catch(() => ({})) as { error?: string };
-        throw new Error(failure.error || "Unable to prepare a secure voice session.");
+      const tokenData = await tokenResponse.json().catch(() => ({})) as { token?: string; error?: string };
+      if (!tokenResponse.ok || typeof tokenData.token !== "string" || tokenData.token.length === 0) {
+        throw new Error(tokenData.error || "Unable to prepare a secure voice session.");
       }
       const greetingAlreadySpoken = window.sessionStorage.getItem(GREETING_KEY) === "1";
       await startSession({
-        ...(token ? { conversationToken: token } : { agentId }),
-        branchId,
+        conversationToken: tokenData.token,
         connectionType: "webrtc",
         ...(greetingAlreadySpoken ? { overrides: { agent: { firstMessage: "" } } } : {}),
       });
-      if (!greetingAlreadySpoken) window.sessionStorage.setItem(GREETING_KEY, "1");
       sessionModeRef.current = "voice";
       setSessionMode("voice");
     } catch (cause) {
@@ -188,9 +164,13 @@ export default function ElevenLabsVoiceWidget() {
     setPending(false);
     try {
       if (status === "connected") await endSession();
+      const signedResponse = await fetch("/api/elevenlabs/signed-url", { cache: "no-store" });
+      const signedData = await signedResponse.json().catch(() => ({})) as { signedUrl?: string; error?: string };
+      if (!signedResponse.ok || typeof signedData.signedUrl !== "string" || !signedData.signedUrl) {
+        throw new Error(signedData.error || "Text chat is temporarily unavailable.");
+      }
       await startSession({
-        agentId: AGENT_ID,
-        branchId: BRANCH_ID,
+        signedUrl: signedData.signedUrl,
         connectionType: "websocket",
         overrides: { conversation: { textOnly: true }, agent: { firstMessage: "" } },
       });
