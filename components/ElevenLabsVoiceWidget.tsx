@@ -225,6 +225,13 @@ export default function ElevenLabsVoiceWidget() {
     }
   }, [endSession]);
 
+  const newConversation = useCallback(async () => {
+    await stopSession();
+    setMessages([]);
+    setInput("");
+    seenMessageIds.current.clear();
+  }, [stopSession]);
+
   const submitMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const text = input.trim();
@@ -285,7 +292,7 @@ export default function ElevenLabsVoiceWidget() {
             <input value={input} onChange={(event) => { setInput(event.target.value); if (status === "connected") sendUserActivity(); }} placeholder="Ask an engineering question…" aria-label="Message NEAS Engineering AI" maxLength={4000} style={{ minWidth: 0, flex: 1, color: "#f5f2ea", background: "rgba(0,0,0,.25)", border: "1px solid rgba(202,147,50,.28)", borderRadius: 9, padding: "10px 11px", fontSize: 11, outline: "none" }} />
             <button type="submit" disabled={!input.trim() || status === "connecting"} style={{ border: "1px solid rgba(202,147,50,.35)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 8, padding: "8px 11px", fontSize: 10, fontWeight: 900, opacity: !input.trim() || status === "connecting" ? .45 : 1, cursor: "pointer" }}>SEND</button>
           </form>
-          <EngineeringAIControls status={status} isMuted={isMuted} mode={sessionMode} onStartVoice={() => void startVoice()} onStartText={() => void startText()} onToggleMute={() => setMuted(!isMuted)} onStop={() => void stopSession()} onRetry={retry} hasError={Boolean(error)} />
+          <EngineeringAIControls status={status} isMuted={isMuted} mode={sessionMode} onStartVoice={() => void startVoice()} onStartText={() => void startText()} onToggleMute={() => setMuted(!isMuted)} onStop={() => void stopSession()} onNewConversation={() => void newConversation()} onRetry={retry} hasError={Boolean(error)} />
           <div style={{ color: "rgba(245,242,234,.35)", fontSize: 8, lineHeight: 1.4 }}>Voice starts only after you enable it. Microphone access is controlled by your browser. NEAS AI is not a substitute for qualified engineering or safety approval.</div>
         </div>
       )}
