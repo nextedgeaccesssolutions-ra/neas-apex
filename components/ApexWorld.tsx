@@ -15,6 +15,7 @@ import ApexHeroOrb, { type OrbState } from "./ApexHeroOrb";
 import ReasoningWebJs from "./ReasoningWeb";
 import ShaderBackgroundJs from "./ShaderBackground";
 import OrbStatusBar from "./OrbStatusBar";
+import { useConversationMode, useConversationStatus } from "@elevenlabs/react";
 
 export type NodeSel = { name: string; key: string; color: string };
 
@@ -230,6 +231,8 @@ export function AgentOverview({ sel, onClose }: { sel: NodeSel; onClose: () => v
 
 /* ── The world ── */
 export default function ApexWorld() {
+  const { isSpeaking, isListening } = useConversationMode();
+  const { status: conversationStatus } = useConversationStatus();
   const [selected, setSelected] = useState<NodeSel | null>(null);
   const [reduced, setReduced] = useState(false);
 
@@ -237,7 +240,12 @@ export default function ApexWorld() {
   // backdrop, the light-cast and the reasoning web's activity level.
   const [showState, setShowState] = useState<OrbState>("idle");
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const orbState: OrbState = showState;
+  const voiceState: OrbState | null = conversationStatus === "connecting"
+    ? "thinking"
+    : conversationStatus === "connected"
+      ? isSpeaking ? "speaking" : isListening ? "listening" : "thinking"
+      : null;
+  const orbState: OrbState = voiceState ?? showState;
 
   const boost = () => {
     const next: OrbState = showState === "idle" ? "thinking" : showState === "thinking" ? "speaking" : "idle";
@@ -262,7 +270,7 @@ export default function ApexWorld() {
   }, []);
 
   // orb tap cycle → the web's activity level (same states the app streams)
-  const webState = orbState === "thinking" ? "processing" : orbState === "speaking" ? "speaking" : "standby";
+  const webState = orbState === "thinking" ? "processing" : orbState === "speaking" ? "speaking" : orbState === "listening" ? "listening" : "standby";
 
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", userSelect: "none" }}>
