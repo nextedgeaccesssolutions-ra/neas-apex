@@ -66,8 +66,11 @@ export default function ElevenLabsVoiceWidget() {
   const appendMessage = useCallback((role: "user" | "assistant", value: unknown) => {
     const text = extractMessageText(value);
     if (!text) return;
-    const id = stringField(value, "response_id") || stringField(value, "event_id") || stringField(value, "message_id") || `${role}:${text}`;
+    const responseId = stringField(value, "response_id") || stringField(value, "event_id") || stringField(value, "message_id");
     setMessages((previous) => {
+      const last = previous[previous.length - 1];
+      if (last?.role === role && last.text === text) return previous;
+      const id = responseId || `${role}:${Date.now()}:${previous.length}`;
       const existing = previous.findIndex((item) => item.id === id);
       if (existing >= 0) return previous.map((item, index) => index === existing ? { ...item, text } : item);
       if (seenMessageIds.current.has(id)) return previous;
@@ -85,7 +88,14 @@ export default function ElevenLabsVoiceWidget() {
       const payload = event as unknown as IncomingMessage;
       appendMessage(payload.source === "user" ? "user" : "assistant", payload.message);
     },
-    onUserTranscript: (event) => appendMessage("user", event),
+    onUserTranscript: (event) => {
+      appendMessage("user", event);
+      const transcript = record(event);
+      if (transcript?.is_final !== false && transcript?.isFinal !== false) {
+        setPending(true);
+        dispatchProcessing(true);
+      }
+    },
     onConnect: () => setError(""),
     onDisconnect: () => {
       setPending(false);
