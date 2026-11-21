@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 type Props = {
   status: "disconnected" | "connecting" | "connected";
   isMuted: boolean;
@@ -10,7 +12,7 @@ type Props = {
   hasError: boolean;
 };
 
-const buttonStyle: React.CSSProperties = {
+const buttonStyle: CSSProperties = {
   border: "1px solid rgba(202,147,50,.35)",
   background: "rgba(7,29,41,.72)",
   color: "#EBC07E",
