@@ -25,7 +25,7 @@ describe("NEAS Engineering AI master system prompt", () => {
   it("requires safety escalation and professional review", () => {
     expect(prompt).toContain("Never approve unsafe work");
     expect(prompt).toContain("competent-person");
-    expect(prompt).toContain("stop-work");
+    expect(prompt).toContain("advise stopping work");
   });
 
   it("preserves voice security and privacy requirements", () => {
