@@ -240,7 +240,7 @@ export default function ElevenLabsVoiceWidget() {
           <div style={{ fontSize: 10, letterSpacing: ".18em", color: "#EBC07E", fontWeight: 800 }}>NEAS ENGINEERING AI</div>
           <div style={{ fontSize: 9, color: "rgba(245,242,234,.52)", marginTop: 3 }}>Engineering intelligence · Voice & text</div>
         </div>
-        <EngineeringAIStatus status={status} isSpeaking={isSpeaking} isListening={isListening} isProcessing={pending} hasError={Boolean(error)} />
+        <EngineeringAIStatus status={status} isSpeaking={isSpeaking} isListening={isListening} isProcessing={pending} hasError={Boolean(error) || status === "error"} />
         <button type="button" onClick={() => setExpanded((value) => !value)} aria-label={expanded ? "Collapse NEAS AI panel" : "Expand NEAS AI panel"} style={{ border: "1px solid rgba(202,147,50,.32)", background: "rgba(7,29,41,.72)", color: "#EBC07E", borderRadius: 8, padding: "6px 8px", cursor: "pointer" }}>{expanded ? "−" : "+"}</button>
       </header>
       {expanded && (
