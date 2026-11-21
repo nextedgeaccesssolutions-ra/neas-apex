@@ -1,13 +1,14 @@
 import type { CSSProperties } from "react";
 
 type Props = {
-  status: "disconnected" | "connecting" | "connected" | "error" | "error";
+  status: "disconnected" | "connecting" | "connected" | "error";
   isMuted: boolean;
   mode: "none" | "voice" | "text";
   onStartVoice: () => void;
   onStartText: () => void;
   onToggleMute: () => void;
   onStop: () => void;
+  onNewConversation: () => void;
   onRetry: () => void;
   hasError: boolean;
 };
@@ -24,7 +25,7 @@ const buttonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
-export default function EngineeringAIControls({ status, isMuted, mode, onStartVoice, onStartText, onToggleMute, onStop, onRetry, hasError }: Props) {
+export default function EngineeringAIControls({ status, isMuted, mode, onStartVoice, onStartText, onToggleMute, onStop, onNewConversation, onRetry, hasError }: Props) {
   const busy = status === "connecting";
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
@@ -51,6 +52,7 @@ export default function EngineeringAIControls({ status, isMuted, mode, onStartVo
           STOP SESSION
         </button>
       )}
+      <button type="button" disabled={busy} onClick={onNewConversation} style={buttonStyle}>NEW CHAT</button>
       {hasError && status !== "connecting" && (
         <button type="button" onClick={onRetry} style={{ ...buttonStyle, borderColor: "rgba(248,113,113,.45)", color: "#fca5a5" }}>
           RETRY
