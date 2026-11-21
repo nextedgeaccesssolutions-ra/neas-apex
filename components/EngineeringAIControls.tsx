@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 type Props = {
-  status: "disconnected" | "connecting" | "connected";
+  status: "disconnected" | "connecting" | "connected" | "error";
   isMuted: boolean;
   mode: "none" | "voice" | "text";
   onStartVoice: () => void;
