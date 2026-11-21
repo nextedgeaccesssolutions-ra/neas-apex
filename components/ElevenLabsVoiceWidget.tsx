@@ -145,7 +145,7 @@ export default function ElevenLabsVoiceWidget() {
       const greetingAlreadySpoken = window.sessionStorage.getItem(GREETING_KEY) === "1";
       await startSession({
         signedUrl: signedData.signedUrl,
-        connectionType: "websocket",
+        connectionType: "webrtc",
         ...(greetingAlreadySpoken ? { overrides: { agent: { firstMessage: "" } } } : {}),
       });
       sessionModeRef.current = "voice";
