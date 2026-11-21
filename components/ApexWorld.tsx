@@ -235,6 +235,7 @@ export default function ApexWorld() {
   const { status: conversationStatus } = useConversationStatus();
   const [selected, setSelected] = useState<NodeSel | null>(null);
   const [reduced, setReduced] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // A tap cycles idle → thinking → speaking → idle. That state drives the
   // backdrop, the light-cast and the reasoning web's activity level.
@@ -243,7 +244,7 @@ export default function ApexWorld() {
   const voiceState: OrbState | null = conversationStatus === "connecting"
     ? "thinking"
     : conversationStatus === "connected"
-      ? isSpeaking ? "speaking" : isListening ? "listening" : "thinking"
+      ? isSpeaking ? "speaking" : isProcessing ? "thinking" : isListening ? "listening" : "thinking"
       : null;
   const orbState: OrbState = voiceState ?? showState;
 
@@ -254,6 +255,15 @@ export default function ApexWorld() {
     showTimer.current = setTimeout(() => setShowState("idle"), 8000);
   };
   useEffect(() => () => { if (showTimer.current) clearTimeout(showTimer.current); }, []);
+
+  useEffect(() => {
+    const handleProcessing = (event: Event) => {
+      const detail = (event as CustomEvent<{ processing?: boolean }>).detail;
+      setIsProcessing(Boolean(detail?.processing));
+    };
+    window.addEventListener("neas-ai-processing", handleProcessing);
+    return () => window.removeEventListener("neas-ai-processing", handleProcessing);
+  }, []);
 
   // Single entry point for opening an agent, shared by the SVG graph and the
   // hidden accessible list, so both routes behave identically.
