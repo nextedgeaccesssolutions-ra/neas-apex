@@ -19,6 +19,7 @@ jobs:
       - name: Checkout recovery branch
         uses: actions/checkout@v4
         with:
+          ref: refs/heads/fix/neas-engineering-ai-recovery-2026-11
           persist-credentials: true
 
       - name: Set up Node.js 22
