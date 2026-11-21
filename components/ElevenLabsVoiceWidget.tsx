@@ -12,6 +12,10 @@ const GREETING_KEY = "neas-engineering-ai-voice-greeting-spoken";
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
 type IncomingMessage = { message: unknown; source?: string; role?: string; event_id?: number | string; response_id?: string };
 
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null ? value as Record<string, unknown> : null;
+}
+
 function stringField(value: unknown, key: string): string | null {
   const field = record(value)?.[key];
   return typeof field === "string" && field.trim() ? field.trim() : null;
@@ -71,7 +75,9 @@ export default function ElevenLabsVoiceWidget() {
       seenMessageIds.current.add(id);
       return [...previous, { id, role, text }];
     });
-    if (role === "assistant") {\n      if (text === NEAS_ENGINEERING_AI_WELCOME && typeof window !== "undefined") window.sessionStorage.setItem(GREETING_KEY, "1");\n      setPending(false);
+    if (role === "assistant") {
+      if (text === NEAS_ENGINEERING_AI_WELCOME && typeof window !== "undefined") window.sessionStorage.setItem(GREETING_KEY, "1");
+      setPending(false);
       dispatchProcessing(false);
     }
   }, []);
