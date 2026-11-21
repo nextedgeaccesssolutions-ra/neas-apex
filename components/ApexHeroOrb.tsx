@@ -7,7 +7,7 @@ import "./apex-orb.css";
 const STAGE_W = 900;
 const STAGE_H = 900;
 
-export type OrbState = "idle" | "thinking" | "speaking";
+export type OrbState = "idle" | "listening" | "thinking" | "speaking";
 
 export default function ApexHeroOrb({ state: controlled, onStateChange, interactive = true }: { state?: OrbState; onStateChange?: (s: OrbState) => void; interactive?: boolean } = {}) {
   const boxRef = useRef<HTMLDivElement>(null);
