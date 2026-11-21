@@ -16,9 +16,9 @@ concurrency:
 
 jobs:
   validate:
-    name: Lint, type-check and production build
+    name: Lint, type-check, audit and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
@@ -38,6 +38,9 @@ jobs:
 
       - name: Type-check
         run: npx tsc --noEmit
+
+      - name: Dependency security audit
+        run: npm audit --audit-level=high
 
       - name: Build Next.js application
         run: npm run build
