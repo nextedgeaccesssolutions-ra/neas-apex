@@ -2,7 +2,7 @@
   "name": "neas-apex",
   "version": "1.0.0",
   "private": true,
-  "description": "NEAS APEX — secure, voice-enabled engineering intelligence for NextEdge Access Solutions",
+  "description": "NEAS APEX — secure, voice-enabled engineering intelligence platform for NextEdge Access Solutions",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
