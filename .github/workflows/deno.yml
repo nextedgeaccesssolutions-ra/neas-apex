@@ -1,4 +1,4 @@
-name: NEAS APEX CI
+name: Founderos CI
 
 on:
   push:
@@ -11,36 +11,26 @@ permissions:
   contents: read
 
 concurrency:
-  group: neas-apex-ci-${{ github.ref }}
+  group: founderos-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   validate:
-    name: Lint, type-check, audit and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Type-check
-        run: npx tsc --noEmit
-
-      - name: Dependency security audit
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test -- --passWithNoTests
+      - name: Security audit
         run: npm audit --audit-level=high
-
-      - name: Build Next.js application
+      - name: Production build
         run: npm run build

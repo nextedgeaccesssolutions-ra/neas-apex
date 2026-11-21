@@ -50,12 +50,5 @@
     "typescript": "^5.6.2",
     "vitest": "^2.1.1"
   },
-  "license": "MIT",
-  "overrides": {
-    "postcss": "8.5.33",
-    "brace-expansion": "5.0.4",
-    "js-yaml": "4.3.2",
-    "source-map-js": "1.2.2",
-    "sharp": "0.35.5"
-  }
+  "license": "MIT"
 }
