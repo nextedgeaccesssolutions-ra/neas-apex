@@ -125,7 +125,7 @@ export default function ElevenLabsVoiceWidget() {
 
   useEffect(() => () => {
     dispatchProcessing(false);
-    void endSession().catch(() => undefined);
+    try { endSession(); } catch { /* Session may already be disconnected during unmount. */ }
   }, [endSession]);
 
   const startVoice = useCallback(async () => {
