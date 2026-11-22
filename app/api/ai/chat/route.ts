@@ -16,6 +16,17 @@ const SYSTEM_INSTRUCTION = [
 
 type Message = { role: "user" | "assistant"; text: string };
 type ImageInput = { mimeType: string; data: string };
+const SPECIALIST_GUIDANCE = {
+  auto: "Determine the best discipline from the user's request. State the discipline being applied when it materially affects the answer. Ask one focused question if routing is ambiguous.",
+  engineering: "Act as the engineering specialist. Focus on technical calculations, inspection evidence, engineering assumptions, design interfaces, standards verification, and competent-person review. Never certify or approve engineering work.",
+  projects: "Act as the project controls specialist. Focus on scope, work breakdown, schedule, resources, dependencies, progress, risks, deliverables, and change control. Distinguish estimates from committed dates.",
+  safety: "Act as the HSE specialist. Focus on hazard identification, risk assessment, controls, permits, emergency readiness, work-at-height safeguards, and verification. Do not authorize site work or replace the appointed competent HSE person.",
+  commercial: "Act as the commercial and procurement specialist. Focus on BOQ, cost breakdowns, pricing assumptions, cash flow, payment terms, procurement specifications, supplier comparison, and contract risks. State currency and tax assumptions.",
+  renewables: "Act as the renewable energy specialist. Focus on wind, solar, met mast, turbine blades, balance of plant, grid interfaces, resource data, access, inspection, and project feasibility. Identify data gaps and applicable engineering review.",
+  "rope-access": "Act as the rope access specialist. Focus on access strategy, work positioning, anchor information, rigging documentation, team competence, equipment inspection, rescue planning, exclusion zones, and operational interfaces. Never invent anchor capacities or certify a rigging plan.",
+  "business-development": "Act as the NEAS business development specialist. Focus on opportunity qualification, client needs, project pipeline, proposal strategy, differentiators, follow-up planning, and commercial next steps. Never claim that outreach or commitments occurred unless confirmed.",
+} as const;
+type SpecialistId = keyof typeof SPECIALIST_GUIDANCE;
 
 function deny(error: string, status: number) {
   return NextResponse.json({ error }, {
@@ -33,11 +44,19 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return deny("Free AI is not configured yet. Add GEMINI_API_KEY in Vercel Environment Variables.", 503);
 
-  let payload: { messages?: unknown; image?: unknown };
+  let payload: { messages?: unknown; image?: unknown; specialist?: unknown };
   try {
     payload = await request.json() as typeof payload;
   } catch {
     return deny("Invalid request body.", 400);
+  }
+
+  let specialist: SpecialistId = "auto";
+  if (payload.specialist !== undefined) {
+    if (typeof payload.specialist !== "string" || !Object.hasOwn(SPECIALIST_GUIDANCE, payload.specialist)) {
+      return deny("Unknown NEAS specialist mode.", 400);
+    }
+    specialist = payload.specialist as SpecialistId;
   }
 
   if (!Array.isArray(payload.messages) || payload.messages.length < 1 || payload.messages.length > 12) {
@@ -86,7 +105,7 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+          system_instruction: { parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nActive specialist mode: ${SPECIALIST_GUIDANCE[specialist]}` }] },
           contents,
           generationConfig: { temperature: 0.35, maxOutputTokens: 1200 },
         }),
@@ -111,7 +130,7 @@ export async function POST(request: NextRequest) {
       .trim();
     if (!reply) return deny("The AI service returned an empty response. Please retry.", 502);
 
-    return NextResponse.json({ reply, model: MODEL }, {
+    return NextResponse.json({ reply, model: MODEL, specialist }, {
       headers: { "Cache-Control": "no-store, max-age=0", "X-Content-Type-Options": "nosniff" },
     });
   } catch {
