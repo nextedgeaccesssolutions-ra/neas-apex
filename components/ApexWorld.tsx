@@ -126,10 +126,15 @@ export function AgentOverview({ sel, onClose }: { sel: NodeSel; onClose: () => v
   const status = STATUS_LINE[info.status];
 
   useEffect(() => {
-    setPos({ x: Math.max(8, window.innerWidth / 2 - 170), y: Math.max(90, window.innerHeight * 0.16) });
+    const frame = window.requestAnimationFrame(() => {
+      setPos({ x: Math.max(8, window.innerWidth / 2 - 170), y: Math.max(90, window.innerHeight * 0.16) });
+    });
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [onClose]);
 
   // Move focus into the window when it opens and hand it back on close, so the
