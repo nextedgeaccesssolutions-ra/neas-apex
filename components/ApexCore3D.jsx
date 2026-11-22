@@ -12,6 +12,7 @@ import React, { useRef, useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import { seededUnit } from '@/lib/seeded-random'
 // Website copy: no voice pipeline here - the calm-render throttle is never engaged.
 const isRenderCalm = () => false
 
@@ -126,10 +127,10 @@ function Core({ state, variant, corner = false, bigDock = false }) {
   const ballsRef = useRef([])
   const st = normalizeState(state)
 
-  const sprite = useMemo(makeSprite, [])
+  const sprite = useMemo(() => makeSprite(), [])
   const geoIco = useMemo(() => new THREE.IcosahedronGeometry(1.0, 2), [])
   const geoSphere = useMemo(() => new THREE.SphereGeometry(1.0, 16, 11), [])
-  const tmp = useMemo(() => ({ mWorld: new THREE.Vector3(), mLocal: new THREE.Vector3(), inv: new THREE.Quaternion(), cw: new THREE.Vector3(), cl: new THREE.Vector3(), clSmooth: new THREE.Vector3(), lag: new THREE.Vector3(), perp: new THREE.Vector3(), v: new THREE.Vector3(), w: new THREE.Vector3(), targets: [], assign: [], tick: 0 }), [])
+  const tmpRef = useRef(null)
 
   const ringData = useMemo(() => [
     { r: 0.74, tube: 0.03, tilt: [0.5, 0.2, 0],    spin: 0.55,  ballSpeed: 1.4, phase: 0 },
@@ -146,17 +147,17 @@ function Core({ state, variant, corner = false, bigDock = false }) {
     const armT = new Float32Array(N)   // >=0 â†’ stream particle (param along the arm); -1 â†’ ball particle
     const ballR = new Float32Array(N)  // radius inside the bubbling ball
     for (let i = 0; i < N; i++) {
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
+      const theta = seededUnit(i * 7) * Math.PI * 2
+      const phi = Math.acos(2 * seededUnit(i * 7 + 1) - 1)
       dir[i * 3]     = Math.sin(phi) * Math.cos(theta)
       dir[i * 3 + 1] = Math.sin(phi) * Math.sin(theta)
       dir[i * 3 + 2] = Math.cos(phi)
-      coreR[i]  = 0.02 + Math.random() * 0.09
-      shellR[i] = 1.12 + Math.random() * (GREEN - 1.12)
-      phase[i]  = Math.random() * Math.PI * 2
-      speed[i]  = 0.7 + Math.random() * 1.7
+      coreR[i]  = 0.02 + seededUnit(i * 7 + 2) * 0.09
+      shellR[i] = 1.12 + seededUnit(i * 7 + 3) * (GREEN - 1.12)
+      phase[i]  = seededUnit(i * 7 + 4) * Math.PI * 2
+      speed[i]  = 0.7 + seededUnit(i * 7 + 5) * 1.7
       armT[i]   = i < ARM_N ? (i + 0.5) / ARM_N : -1   // even spread 0..1 along the stream
-      ballR[i]  = 0.16 + Math.pow(Math.random(), 0.6) * 0.84  // normalized 0..1 fill of the ball
+      ballR[i]  = 0.16 + Math.pow(seededUnit(i * 7 + 6), 0.6) * 0.84  // normalized 0..1 fill of the ball
     }
     return { dir, coreR, shellR, phase, speed, armT, ballR }
   }, [])
@@ -167,6 +168,10 @@ function Core({ state, variant, corner = false, bigDock = false }) {
   const calmCarryRef = useRef(0)
 
   useFrame((frame, dt) => {
+    if (tmpRef.current === null) {
+      tmpRef.current = { mWorld: new THREE.Vector3(), mLocal: new THREE.Vector3(), inv: new THREE.Quaternion(), cw: new THREE.Vector3(), cl: new THREE.Vector3(), clSmooth: new THREE.Vector3(), lag: new THREE.Vector3(), perp: new THREE.Vector3(), v: new THREE.Vector3(), w: new THREE.Vector3(), targets: [], assign: [], tick: 0 }
+    }
+    const tmp = tmpRef.current
     // [perf] Tier B Step 1: while a reply streams / Apex speaks, halve the per-frame particle work (skip
     // every other frame) so the main thread stops starving the WS audio-delivery queue. Two guards keep
     // the throttle from reading as a FROZEN orb (Ruben saw the ball stop mid-way through long replies):
@@ -191,7 +196,8 @@ function Core({ state, variant, corner = false, bigDock = false }) {
     const spread = spreadRef.current
 
     const { dir, coreR, shellR, phase, speed, armT, ballR } = data
-    const pos = positions
+    const pos = points.current?.geometry?.attributes?.position?.array
+    if (!pos) return
 
     // ===== PARTICLES variant: state-driven bubbling ball (arm to be re-implemented later) =====
     // Kept deliberately lean â€” no per-frame matrix/cursor work â€” so it never starves the

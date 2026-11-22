@@ -34,9 +34,12 @@ function Clock() {
   const [wx, setWx] = useState<{ temp: number | null; code: number | null; city: string } | null>(null);
 
   useEffect(() => {
-    setNow(new Date());
+    const frame = requestAnimationFrame(() => setNow(new Date()));
     const id = setInterval(() => setNow(new Date()), 30000);
-    return () => clearInterval(id);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
