@@ -145,11 +145,12 @@ export default function ElevenLabsVoiceWidget() {
       }
 
       const greetingAlreadySpoken = window.sessionStorage.getItem(GREETING_KEY) === "1";
+      // The client SDK forwards branchId to ElevenLabs; the React 1.20 wrapper type omits it.
       await startSession({
         agentId: configData.agentId,
         branchId: configData.branchId,
         ...(greetingAlreadySpoken ? { overrides: { agent: { firstMessage: "" } } } : {}),
-      });
+      } as unknown as Parameters<typeof startSession>[0]);
       sessionModeRef.current = "voice";
       setSessionMode("voice");
     } catch (cause) {
@@ -182,7 +183,7 @@ export default function ElevenLabsVoiceWidget() {
         agentId: configData.agentId,
         branchId: configData.branchId,
         overrides: { conversation: { textOnly: true }, agent: { firstMessage: "" } },
-      });
+      } as unknown as Parameters<typeof startSession>[0]);
       sessionModeRef.current = "text";
       setSessionMode("text");
       return true;
