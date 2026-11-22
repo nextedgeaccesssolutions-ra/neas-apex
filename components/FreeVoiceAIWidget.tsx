@@ -262,6 +262,7 @@ export default function FreeVoiceAIWidget() {
     try { recognition.start(); } catch {
       setListening(false);
       recognitionRef.current = null;
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
       setError("The microphone could not start. Please try again.");
     }
   }, [listening, pending, sendMessage, startRecordingFallback]);
