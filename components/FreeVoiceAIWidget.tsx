@@ -235,8 +235,15 @@ export default function FreeVoiceAIWidget() {
     recognition.onerror = (event) => {
       setListening(false);
       window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false } }));
-      if (event.error !== "no-speech" && event.error !== "aborted") {
-        setError(event.error === "not-allowed" ? "Microphone permission was denied. Allow microphone access in your browser." : `Speech recognition error: ${event.error}`);
+      if (event.error === "network" || event.error === "service-not-allowed") {
+        setError("Browser speech recognition is unavailable. Switching to the built-in microphone recorder…");
+        void startRecordingFallback();
+      } else if (event.error === "not-allowed") {
+        setError("Microphone permission was denied. Allow microphone access in your browser, then try again.");
+      } else if (event.error !== "no-speech" && event.error !== "aborted") {
+        setError(`Speech recognition error: ${event.error}`);
+      } else if (event.error === "no-speech") {
+        setError("No speech was detected. Try again, or use RECORD VOICE if browser recognition is unavailable.");
       }
     };
     recognition.onend = () => {
