@@ -201,6 +201,17 @@ export default function FreeVoiceAIWidget() {
     setSpeaking(false);
   }, []);
 
+  useEffect(() => {
+    const onStart = () => startListening();
+    const onStop = () => stopVoice();
+    window.addEventListener("neas-ai-start-voice", onStart);
+    window.addEventListener("neas-ai-stop-voice", onStop);
+    return () => {
+      window.removeEventListener("neas-ai-start-voice", onStart);
+      window.removeEventListener("neas-ai-stop-voice", onStop);
+    };
+  }, [startListening, stopVoice]);
+
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void sendMessage(input, photo);
@@ -244,7 +255,7 @@ export default function FreeVoiceAIWidget() {
             {recognitionSupported && !listening && <button type="button" disabled={pending} onClick={startListening} style={{ border: "1px solid rgba(202,147,50,.35)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 9, padding: "9px 11px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>🎙 SPEAK</button>}
             {listening && <button type="button" onClick={() => recognitionRef.current?.stop()} style={{ border: "1px solid rgba(248,113,113,.45)", color: "#fca5a5", background: "transparent", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP LISTENING</button>}
             {voiceEnabled && <button type="button" onClick={stopVoice} style={{ border: "1px solid rgba(202,147,50,.35)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>VOICE OFF</button>}
-            <button type="button" onClick={() => { window.speechSynthesis?.cancel(); setSpeaking(false); }} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP AUDIO</button>
+            <button type="button" onClick={() => { window.speechSynthesis?.cancel(); setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP AUDIO</button>
             <button type="button" onClick={() => fileRef.current?.click()} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>ATTACH IMAGE</button>
             <button type="button" onClick={() => { stopVoice(); setMessages([]); setInput(""); setPhoto(null); setError(""); }} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>NEW CHAT</button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) { if (file.size > 3 * 1024 * 1024) setError("Images must be 3 MB or smaller."); else setPhoto(file); } event.currentTarget.value = ""; }} />
