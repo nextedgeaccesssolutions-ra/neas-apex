@@ -86,7 +86,7 @@ export default function FreeVoiceAIWidget() {
 
   useEffect(() => {
     setRecognitionSupported(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
-    setAudioCaptureSupported(Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder));
+    setAudioCaptureSupported(Boolean(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function" && typeof window.MediaRecorder !== "undefined"));
     return () => {
       recognitionRef.current?.abort();
       if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
