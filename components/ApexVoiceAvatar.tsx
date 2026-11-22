@@ -9,11 +9,12 @@ const STATE_LABEL: Record<OrbState, string> = {
   speaking: "SPEAKING",
 };
 
-export default function ApexVoiceAvatar({ state }: { state: OrbState; connected?: boolean }) {
-  const outputLevel = state === "speaking" ? 0.72 : state === "listening" ? 0.24 : 0;
+export default function ApexVoiceAvatar({ state, connected = false }: { state: OrbState; connected?: boolean }) {
+  const outputLevel = state === "speaking" ? 0.9 : state === "listening" ? 0.42 : state === "thinking" ? 0.28 : connected ? 0.12 : 0;
+  const statusLabel = state === "idle" && connected ? "VOICE READY" : STATE_LABEL[state];
 
   return (
-    <div className="neas-avatar-console" data-state={state} aria-label="NEAS AI holographic assistant">
+    <div className="neas-avatar-console" data-state={state} data-connected={connected ? "true" : "false"} aria-label={`NEAS AI holographic assistant, ${statusLabel.toLowerCase()}`}>
       <div className="neas-avatar-portrait" aria-hidden="true">
         <div className="neas-avatar-halo" />
         <img src="/neas-ai-avatar.webp" alt="" className="neas-avatar-face-image" />
@@ -31,7 +32,7 @@ export default function ApexVoiceAvatar({ state }: { state: OrbState; connected?
       <div className="neas-avatar-caption">
         <span className="neas-avatar-live-dot" />
         <span>NEAS AI CORE</span>
-        <span className="neas-avatar-state">{STATE_LABEL[state]}</span>
+        <span className="neas-avatar-state">{statusLabel}</span>
       </div>
     </div>
   );
