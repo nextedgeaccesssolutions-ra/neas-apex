@@ -81,7 +81,7 @@ export default function EngineeringAITaskEngine({
   return (
     <details style={{ border: "1px solid rgba(202,147,50,.2)", borderRadius: 10, background: "rgba(202,147,50,.045)" }}>
       <summary style={{ cursor: "pointer", padding: "9px 11px", color: "#EBC07E", fontSize: 9, fontWeight: 800, letterSpacing: ".16em", listStylePosition: "inside" }}>
-        ENGINEERING TASKS · 12 WORKFLOWS
+        ENGINEERING TASKS · 13 WORKFLOWS
       </summary>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 6, padding: "0 9px 9px" }}>
         {TASKS.map((task) => (
