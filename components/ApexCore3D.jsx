@@ -12,6 +12,7 @@ import React, { useRef, useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import { seededUnit } from '@/lib/seeded-random'
 // Website copy: no voice pipeline here - the calm-render throttle is never engaged.
 const isRenderCalm = () => false
 
@@ -146,17 +147,17 @@ function Core({ state, variant, corner = false, bigDock = false }) {
     const armT = new Float32Array(N)   // >=0 â†’ stream particle (param along the arm); -1 â†’ ball particle
     const ballR = new Float32Array(N)  // radius inside the bubbling ball
     for (let i = 0; i < N; i++) {
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
+      const theta = seededUnit(i * 7) * Math.PI * 2
+      const phi = Math.acos(2 * seededUnit(i * 7 + 1) - 1)
       dir[i * 3]     = Math.sin(phi) * Math.cos(theta)
       dir[i * 3 + 1] = Math.sin(phi) * Math.sin(theta)
       dir[i * 3 + 2] = Math.cos(phi)
-      coreR[i]  = 0.02 + Math.random() * 0.09
-      shellR[i] = 1.12 + Math.random() * (GREEN - 1.12)
-      phase[i]  = Math.random() * Math.PI * 2
-      speed[i]  = 0.7 + Math.random() * 1.7
+      coreR[i]  = 0.02 + seededUnit(i * 7 + 2) * 0.09
+      shellR[i] = 1.12 + seededUnit(i * 7 + 3) * (GREEN - 1.12)
+      phase[i]  = seededUnit(i * 7 + 4) * Math.PI * 2
+      speed[i]  = 0.7 + seededUnit(i * 7 + 5) * 1.7
       armT[i]   = i < ARM_N ? (i + 0.5) / ARM_N : -1   // even spread 0..1 along the stream
-      ballR[i]  = 0.16 + Math.pow(Math.random(), 0.6) * 0.84  // normalized 0..1 fill of the ball
+      ballR[i]  = 0.16 + Math.pow(seededUnit(i * 7 + 6), 0.6) * 0.84  // normalized 0..1 fill of the ball
     }
     return { dir, coreR, shellR, phase, speed, armT, ballR }
   }, [])
