@@ -42,12 +42,15 @@ function speak(text: string, onStart: () => void, onEnd: () => void, onError: (m
   try {
     const synthesis = window.speechSynthesis;
     synthesis.cancel();
+    synthesis.resume();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
-    utterance.rate = 1;
+    utterance.rate = 0.96;
     utterance.pitch = 1;
+    utterance.volume = 1;
     const voices = synthesis.getVoices();
-    utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us"))
+    utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith("en-ph"))
+      || voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us"))
       || voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) || null;
     utterance.onstart = onStart;
     utterance.onend = onEnd;
