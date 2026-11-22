@@ -137,16 +137,16 @@ export default function ElevenLabsVoiceWidget() {
     setPending(false);
     try {
       if (status === "connected") await endSession();
-      const signedResponse = await fetch("/api/elevenlabs/signed-url", { cache: "no-store" });
-      const signedData = await signedResponse.json().catch(() => ({})) as { signedUrl?: string; error?: string };
-      if (!signedResponse.ok || typeof signedData.signedUrl !== "string" || signedData.signedUrl.length === 0) {
-        throw new Error(signedData.error || "Voice authentication is not configured. Add ELEVENLABS_API_KEY in Vercel to enable voice.");
+      const configResponse = await fetch("/api/elevenlabs/config", { cache: "no-store" });
+      const configData = await configResponse.json().catch(() => ({})) as { agentId?: string; branchId?: string; error?: string };
+      if (!configResponse.ok || !configData.agentId || !configData.branchId) {
+        throw new Error(configData.error || "NEAS AI voice configuration is unavailable.");
       }
 
       const greetingAlreadySpoken = window.sessionStorage.getItem(GREETING_KEY) === "1";
       await startSession({
-        signedUrl: signedData.signedUrl,
-        connectionType: "websocket",
+        agentId: configData.agentId,
+        branchId: configData.branchId,
         ...(greetingAlreadySpoken ? { overrides: { agent: { firstMessage: "" } } } : {}),
       });
       sessionModeRef.current = "voice";
@@ -171,15 +171,15 @@ export default function ElevenLabsVoiceWidget() {
     setPending(false);
     try {
       if (status === "connected") await endSession();
-      const signedResponse = await fetch("/api/elevenlabs/signed-url", { cache: "no-store" });
-      const signedData = await signedResponse.json().catch(() => ({})) as { signedUrl?: string; error?: string };
-      if (!signedResponse.ok || typeof signedData.signedUrl !== "string" || signedData.signedUrl.length === 0) {
-        throw new Error(signedData.error || "Text chat is not configured. Add ELEVENLABS_API_KEY in Vercel to enable the Engineering AI session.");
+      const configResponse = await fetch("/api/elevenlabs/config", { cache: "no-store" });
+      const configData = await configResponse.json().catch(() => ({})) as { agentId?: string; branchId?: string; error?: string };
+      if (!configResponse.ok || !configData.agentId || !configData.branchId) {
+        throw new Error(configData.error || "NEAS AI text configuration is unavailable.");
       }
 
       await startSession({
-        signedUrl: signedData.signedUrl,
-        connectionType: "websocket",
+        agentId: configData.agentId,
+        branchId: configData.branchId,
         overrides: { conversation: { textOnly: true }, agent: { firstMessage: "" } },
       });
       sessionModeRef.current = "text";
@@ -249,6 +249,7 @@ export default function ElevenLabsVoiceWidget() {
     setExpanded(true);
     if (status !== "connected") {
       pendingPhotoRef.current = file;
+      if (status === "connecting") return;
       const connected = await startText();
       if (!connected) pendingPhotoRef.current = null;
       return;
