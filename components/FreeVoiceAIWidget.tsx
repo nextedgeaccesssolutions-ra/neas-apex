@@ -82,6 +82,7 @@ export default function FreeVoiceAIWidget() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const voiceEnabledRef = useRef(false);
   const busyRef = useRef(false);
+  const fallbackAfterRecognitionRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -245,13 +246,18 @@ export default function FreeVoiceAIWidget() {
       } else if (event.error !== "no-speech" && event.error !== "aborted") {
         setError(`Speech recognition error: ${event.error}`);
       } else if (event.error === "no-speech") {
-        setError("No speech was detected. Try again, or use RECORD VOICE if browser recognition is unavailable.");
+        fallbackAfterRecognitionRef.current = true;
+        setError("Browser recognition did not capture speech. Switching to microphone recording…");
       }
     };
     recognition.onend = () => {
       setListening(false);
-      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false } }));
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
       recognitionRef.current = null;
+      if (fallbackAfterRecognitionRef.current && !busyRef.current) {
+        fallbackAfterRecognitionRef.current = false;
+        void startRecordingFallback();
+      }
     };
     recognitionRef.current = recognition;
     setListening(true);
