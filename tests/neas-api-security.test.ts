@@ -47,6 +47,18 @@ describe("NEAS API request security", () => {
     ).toBe(false);
   });
 
+
+  it("rejects malformed origins", () => {
+    expect(
+      isSameOriginBrowserRequest(
+        request({
+          host: "neas-apex.vercel.app",
+          origin: "not-a-url",
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("rejects requests without a host", () => {
     expect(isSameOriginBrowserRequest(request({ origin: "https://neas-apex.vercel.app" }))).toBe(false);
   });
