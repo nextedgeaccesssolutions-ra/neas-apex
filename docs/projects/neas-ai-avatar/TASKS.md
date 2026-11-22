@@ -1,22 +1,22 @@
 # NEAS APEX holographic avatar — Tasks
 
-Updated: 2026-11-22
+Updated: 2026-11-23
 
 ## Implementation
 - [x] Use the operator-supplied blue holographic face portrait.
 - [x] Overlay the avatar inside the existing central gold orb without replacing the dashboard.
 - [x] Add idle breathing, glowing eyes and reduced-motion support.
-- [x] Add a central microphone control and end-session control.
-- [x] Synchronize mouth waveform animation with ElevenLabs output volume.
+- [x] Add accessible central-core tap activation that starts the browser voice conversation.
+- [x] Synchronize core/avatar state and speaking waveform with browser speech synthesis lifecycle events.
 - [x] Add image selection, local preview, upload and multimodal prompt submission.
-- [x] Use public agent ID + branch ID from a server route; do not expose an API key to the browser.
+- [x] Keep browser-native voice independent of third-party voice credentials; no voice API key is exposed to the browser.
 - [x] Preserve origin-header enforcement and allowlist only known NEAS APEX hosts.
 - [x] Set the approved welcome greeting on Main and Engineering AI candidate branches.
 
 ## Verification
 - [ ] GitHub CI: `npm run typecheck`, `npm test`, `npm run build`.
 - [ ] Vercel preview deploy and exact-host allowlist.
-- [ ] Manual test: microphone permission, voice start/stop, interruption, mouth animation.
+- [ ] Manual test: microphone permission, central-core activation, voice start/stop, interruption, mouth animation.
 - [ ] Manual test: image upload and Gemini vision response.
 
 ## Separate router/workforce dependency

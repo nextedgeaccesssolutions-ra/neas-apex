@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Form
 import EngineeringAITaskEngine, { type SpecialistId } from "./EngineeringAITaskEngine";
 import EngineeringAIWelcome from "./EngineeringAIWelcome";
 
-type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
+type ChatMessage = { id: string; role: "user" | "assistant"; text: string; agent?: string };
 type AudioInput = { mimeType: string; data: string };
 type RecognitionAlternative = { transcript: string };
 type RecognitionResult = { isFinal: boolean; 0: RecognitionAlternative };
@@ -42,12 +42,15 @@ function speak(text: string, onStart: () => void, onEnd: () => void, onError: (m
   try {
     const synthesis = window.speechSynthesis;
     synthesis.cancel();
+    synthesis.resume();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
-    utterance.rate = 1;
+    utterance.rate = 0.96;
     utterance.pitch = 1;
+    utterance.volume = 1;
     const voices = synthesis.getVoices();
-    utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us"))
+    utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith("en-ph"))
+      || voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us"))
       || voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) || null;
     utterance.onstart = onStart;
     utterance.onend = onEnd;
@@ -82,6 +85,7 @@ export default function FreeVoiceAIWidget() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const voiceEnabledRef = useRef(false);
   const busyRef = useRef(false);
+  const fallbackAfterRecognitionRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -152,10 +156,10 @@ export default function FreeVoiceAIWidget() {
           ...(audio ? { audio } : {}),
         }),
       });
-      const data = await response.json().catch(() => ({})) as { reply?: string; error?: string };
+      const data = await response.json().catch(() => ({})) as { reply?: string; error?: string; agent?: string; specialist?: SpecialistId };
       if (!response.ok || !data.reply) throw new Error(data.error || "NEAS AI is temporarily unavailable.");
       const reply = data.reply.trim();
-      setMessages((current) => [...current, { id: `assistant:${Date.now()}`, role: "assistant", text: reply }]);
+      setMessages((current) => [...current, { id: `assistant:${Date.now()}`, role: "assistant", text: reply, agent: data.agent || "NEAS AI Agent" }]);
       if (voiceEnabledRef.current) speak(reply, () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }, (message) => setError(message));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to reach the free AI service.");
@@ -183,6 +187,7 @@ export default function FreeVoiceAIWidget() {
       recorder.onerror = () => setError("Microphone recording failed. Check microphone permissions and try again.");
       recorder.onstop = async () => {
         setRecording(false);
+        window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
         stream.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
         const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
@@ -194,17 +199,14 @@ export default function FreeVoiceAIWidget() {
             reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Invalid audio data."));
             reader.readAsDataURL(blob);
           });
-          voiceEnabledRef.current = true;
-          setVoiceEnabled(true);
           void sendMessage("Please transcribe this voice message and respond directly to the spoken request.", null, "auto", { mimeType: blob.type || "audio/webm", data: dataUrl.split(",")[1] || "" });
         } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to process the recorded audio."); }
       };
       mediaRecorderRef.current = recorder;
       recorder.start();
       setRecording(true);
-      setVoiceEnabled(true);
-      voiceEnabledRef.current = true;
-      setError("Recording. Press STOP RECORDING when you have finished speaking.");
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: voiceEnabledRef.current } }));
+      setError("");
     } catch (cause) {
       setError(cause instanceof DOMException && cause.name === "NotAllowedError"
         ? "Microphone permission was denied. Allow microphone access for this site, then try again."
@@ -243,23 +245,27 @@ export default function FreeVoiceAIWidget() {
       } else if (event.error !== "no-speech" && event.error !== "aborted") {
         setError(`Speech recognition error: ${event.error}`);
       } else if (event.error === "no-speech") {
-        setError("No speech was detected. Try again, or use RECORD VOICE if browser recognition is unavailable.");
+        fallbackAfterRecognitionRef.current = true;
+        setError("Browser recognition did not capture speech. Switching to microphone recording…");
       }
     };
     recognition.onend = () => {
       setListening(false);
-      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false } }));
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
       recognitionRef.current = null;
+      if (fallbackAfterRecognitionRef.current && !busyRef.current) {
+        fallbackAfterRecognitionRef.current = false;
+        void startRecordingFallback();
+      }
     };
     recognitionRef.current = recognition;
     setListening(true);
-    setVoiceEnabled(true);
-    voiceEnabledRef.current = true;
-    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } }));
+    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: voiceEnabledRef.current } }));
     setError("");
     try { recognition.start(); } catch {
       setListening(false);
       recognitionRef.current = null;
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
       setError("The microphone could not start. Please try again.");
     }
   }, [listening, pending, sendMessage, startRecordingFallback]);
@@ -293,10 +299,25 @@ export default function FreeVoiceAIWidget() {
   }, [startListening, stopVoice]);
 
   const enableVoiceOutput = () => {
-    voiceEnabledRef.current = true;
-    setVoiceEnabled(true);
     setError("");
-    speak("NEAS AI voice output is enabled.", () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }, (message) => setError(message));
+    const started = speak("NEAS AI voice output is now active. I will speak my replies.", () => {
+      voiceEnabledRef.current = true;
+      setVoiceEnabled(true);
+      setSpeaking(true);
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: true } }));
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } }));
+    }, () => {
+      setSpeaking(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+    }, (message) => {
+      voiceEnabledRef.current = false;
+      setVoiceEnabled(false);
+      setError(message);
+    });
+    if (!started) {
+      voiceEnabledRef.current = false;
+      setVoiceEnabled(false);
+    }
   };
 
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
@@ -306,14 +327,14 @@ export default function FreeVoiceAIWidget() {
 
   const launchTask = (prompt: string, specialist: SpecialistId) => void sendMessage(prompt, null, specialist);
 
-  const statusText = pending ? "THINKING" : listening ? "LISTENING" : speaking ? "SPEAKING" : voiceEnabled ? "VOICE READY" : "STANDBY";
+  const statusText = pending ? "THINKING" : recording ? "RECORDING" : listening ? "LISTENING" : speaking ? "SPEAKING" : voiceEnabled ? "VOICE READY" : "STANDBY";
 
   return (
     <section style={panelStyle} aria-label="NEAS free AI conversation">
       <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid rgba(202,147,50,.2)", background: "linear-gradient(100deg,rgba(202,147,50,.12),rgba(7,29,41,.1))" }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 10, letterSpacing: ".18em", color: "#EBC07E", fontWeight: 800 }}>NEAS ENGINEERING AI</div>
-          <div style={{ fontSize: 9, color: "rgba(245,242,234,.52)", marginTop: 3 }}>Free AI · Browser voice · Text & image</div>
+          <div style={{ fontSize: 9, color: "rgba(245,242,234,.52)", marginTop: 3 }}>Specialist agents · Browser voice · Text & image</div>
         </div>
         <span aria-live="polite" style={{ fontSize: 8, letterSpacing: ".12em", color: error ? "#fca5a5" : listening ? "#86efac" : "#EBC07E" }}>{error ? "ERROR" : statusText}</span>
         <button type="button" onClick={() => setExpanded((value) => !value)} aria-label={expanded ? "Collapse NEAS AI panel" : "Expand NEAS AI panel"} style={{ border: "1px solid rgba(202,147,50,.32)", background: "rgba(7,29,41,.72)", color: "#EBC07E", borderRadius: 8, padding: "6px 8px", cursor: "pointer" }}>{expanded ? "−" : "+"}</button>
@@ -324,7 +345,7 @@ export default function FreeVoiceAIWidget() {
           <div aria-live="polite" aria-relevant="additions text" style={{ height: 158, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, padding: "2px 2px 4px" }}>
             {messages.map((message) => (
               <div key={message.id} style={{ alignSelf: message.role === "user" ? "flex-end" : "flex-start", maxWidth: "91%", padding: "8px 10px", borderRadius: 10, background: message.role === "user" ? "rgba(202,147,50,.16)" : "rgba(255,255,255,.055)", border: `1px solid ${message.role === "user" ? "rgba(202,147,50,.28)" : "rgba(255,255,255,.08)"}` }}>
-                <div style={{ fontSize: 8, letterSpacing: ".14em", color: message.role === "user" ? "#EBC07E" : "rgba(87,207,226,.8)", marginBottom: 4 }}>{message.role === "user" ? "YOU" : "NEAS AI"}</div>
+                <div style={{ fontSize: 8, letterSpacing: ".14em", color: message.role === "user" ? "#EBC07E" : "rgba(87,207,226,.8)", marginBottom: 4 }}>{message.role === "user" ? "YOU" : (message.agent || "NEAS AI")}</div>
                 <p style={{ margin: 0, color: "rgba(245,242,234,.9)", fontSize: 11, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.text}</p>
               </div>
             ))}
@@ -350,7 +371,7 @@ export default function FreeVoiceAIWidget() {
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) { if (file.size > 3 * 1024 * 1024) setError("Images must be 3 MB or smaller."); else setPhoto(file); } event.currentTarget.value = ""; }} />
           </div>
           <div style={{ color: "rgba(245,242,234,.42)", fontSize: 8, lineHeight: 1.45 }}>
-            Microphone input uses browser speech recognition when available, with browser recording + Gemini transcription as a fallback. Spoken replies use your device's built-in speech engine. Allow microphone access and enable voice output once. Do not submit confidential project or personal data to free-tier AI services.
+            Microphone input uses browser speech recognition or recorded-audio transcription. Spoken replies use your device's built-in speech engine. Enable VOICE separately once to authorize audible replies; microphone recording alone does not enable speaker output. Do not submit confidential project or personal data to free-tier AI services.
           </div>
         </div>
       )}

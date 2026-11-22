@@ -242,9 +242,15 @@ export default function ApexWorld() {
   // A tap cycles idle → thinking → speaking → idle. That state drives the
   // backdrop, the light-cast and the reasoning web's activity level.
   const [showState] = useState<OrbState>("idle");
-  const voiceState: OrbState | null = isVoiceEnabled
-    ? isSpeaking ? "speaking" : isProcessing ? "thinking" : isListening ? "listening" : "idle"
-    : null;
+  // Drive the core from real conversation events, including text-only requests.
+  // Voice-enabled idle is distinct from disconnected standby.
+  const voiceState: OrbState | null = isSpeaking
+    ? "speaking"
+    : isProcessing
+      ? "thinking"
+      : isListening
+        ? "listening"
+        : isVoiceEnabled ? "idle" : null;
   const orbState: OrbState = voiceState ?? showState;
 
   useEffect(() => {
@@ -349,8 +355,15 @@ export default function ApexWorld() {
       </div>
 
       {/* The animated face and real voice/photo controls occupy the existing central gold orb. */}
-      <div style={{ position:"absolute", left:"50%", top:"50%", width:"min(340px,58vw)", height:"min(340px,58vw)", transform:"translate(-50%,-50%)", zIndex:5, pointerEvents:"none" }}>
+      <div style={{ position:"absolute", left:"50%", top:"50%", width:"min(340px,58vw)", height:"min(340px,58vw)", transform:"translate(-50%,-50%)", zIndex:5, pointerEvents:"auto" }}>
         <ApexVoiceAvatar state={orbState} connected={conversationStatus === "connected"} />
+        <button
+          type="button"
+          aria-label="Start voice conversation with NEAS AI CORE"
+          title="Tap to speak with NEAS AI CORE"
+          onClick={() => window.dispatchEvent(new CustomEvent("neas-ai-start-voice"))}
+          style={{ position:"absolute", left:"50%", top:"50%", width:92, height:92, transform:"translate(-50%,-50%)", border:0, borderRadius:"50%", background:"transparent", cursor:"pointer", zIndex:9, pointerEvents:"auto" }}
+        />
       </div>
 
       {/* equalizer + STANDBY cluster */}
