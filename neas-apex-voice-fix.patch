@@ -1,0 +1,25 @@
+diff --git a/components/FreeVoiceAIWidget.tsx b/components/FreeVoiceAIWidget.tsx
+index de9de10..c76886d 100644
+--- a/components/FreeVoiceAIWidget.tsx
++++ b/components/FreeVoiceAIWidget.tsx
+@@ -167,7 +167,7 @@ export default function FreeVoiceAIWidget() {
+   }, [messages]);
+ 
+   const startRecordingFallback = useCallback(async () => {
+-    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
++    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function" || typeof window.MediaRecorder === "undefined") {
+       setError("This browser does not support microphone recording. Try Chrome or Edge over HTTPS.");
+       return;
+     }
+diff --git a/proxy.ts b/proxy.ts
+index 2892cdb..e0cd3da 100644
+--- a/proxy.ts
++++ b/proxy.ts
+@@ -7,6 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
+  */
+ const PUBLIC_API_PATHS = new Set([
+   "/api/weather",
++  "/api/ai/chat",
+   "/api/elevenlabs/token",
+   "/api/elevenlabs/signed-url",
+ ]);
