@@ -187,7 +187,7 @@ export default function FreeVoiceAIWidget() {
       recorder.onerror = () => setError("Microphone recording failed. Check microphone permissions and try again.");
       recorder.onstop = async () => {
         setRecording(false);
-        window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: true } }));
+        window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
         stream.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
         const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
