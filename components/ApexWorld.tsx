@@ -329,8 +329,7 @@ export default function ApexWorld() {
         </ul>
       </nav>
 
-      {/* the core - painted ABOVE the web (app order); display-only, the tap target
-          is the circular disc below so agent nodes near the ring stay clickable */}
+      {/* the core - painted ABOVE the reasoning web; the avatar owns the voice/photo controls */}
       <div style={{ position: "absolute", left: "50%", top: "50%", width: "min(560px, 58vw)", height: "min(500px, 56vw, 70vh)", transform: "translate(-50%, -50%)", zIndex: 3, pointerEvents: "none" }}>
         <ApexHeroOrb state={orbState} interactive={false} />
       </div>
