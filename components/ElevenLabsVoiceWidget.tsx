@@ -60,7 +60,8 @@ export default function ElevenLabsVoiceWidget() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const startLock = useRef(false);
   const sessionModeRef = useRef<"none" | "voice" | "text">("none");
-  const seenMessageIds = useRef(new Set<string>());\n  const pendingPhotoRef = useRef<File | null>(null);
+  const seenMessageIds = useRef(new Set<string>());
+  const pendingPhotoRef = useRef<File | null>(null);
 
   const appendMessage = useCallback((role: "user" | "assistant", value: unknown) => {
     const text = extractMessageText(value);
