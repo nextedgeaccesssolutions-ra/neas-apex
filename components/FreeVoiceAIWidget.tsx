@@ -114,7 +114,7 @@ export default function FreeVoiceAIWidget() {
       if (!response.ok || !data.reply) throw new Error(data.error || "NEAS AI is temporarily unavailable.");
       const reply = data.reply.trim();
       setMessages((current) => [...current, { id: `assistant:${Date.now()}`, role: "assistant", text: reply }]);
-      if (voiceEnabledRef.current) speak(reply, () => setSpeaking(true), () => setSpeaking(false));
+      if (voiceEnabledRef.current) speak(reply, () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to reach the free AI service.");
     } finally {
