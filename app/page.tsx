@@ -14,6 +14,18 @@ export default function Home() {
       </section>
       <FreeVoiceAIWidget />
       <a
+        href="/market-intelligence"
+        style={{
+          position: "absolute", top: 16, right: "clamp(150px, 15vw, 220px)", zIndex: 40,
+          fontFamily: "var(--font-mono)", fontSize: "0.66rem", letterSpacing: "0.18em",
+          textTransform: "uppercase", color: "#EBC07E", textDecoration: "none",
+          border: "1px solid rgba(202,147,50,0.45)", borderRadius: 20, padding: "7px 15px",
+          background: "rgba(9,8,7,0.72)", backdropFilter: "blur(6px)",
+        }}
+      >
+        Market Intelligence ↗
+      </a>
+      <a
         href="https://github.com/nextedgeaccesssolutions-ra/neas-apex"
         target="_blank"
         rel="noopener noreferrer"
