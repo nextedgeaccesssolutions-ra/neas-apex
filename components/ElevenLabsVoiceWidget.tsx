@@ -163,61 +163,6 @@ export default function ElevenLabsVoiceWidget() {
     }
   }, [endSession, startSession, status]);
 
-  const uploadPhoto = useCallback(async (file: File) => {
-    setError("");
-    setPending(true);
-    dispatchProcessing(true);
-    try {
-      const uploaded = await uploadFile(file);
-      sendMultimodalMessage({
-        text: "Please inspect the attached image and describe the visible details. Separate direct observations from assumptions. For technical or safety-related images, identify uncertainties and do not issue an engineering or HSE approval.",
-        fileId: uploaded.fileId,
-      });
-      setMessages((previous) => [...previous, { id: `photo:${Date.now()}:${previous.length}`, role: "user", text: `Image attached: ${file.name}` }]);
-    } catch (cause) {
-      setPending(false);
-      dispatchProcessing(false);
-      setError(cause instanceof Error ? cause.message : "The image could not be uploaded to NEAS AI.");
-    }
-  }, [sendMultimodalMessage, uploadFile]);
-
-  const handlePhotoSelected = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) { setError("Only image files are supported."); return; }
-    if (file.size > 10 * 1024 * 1024) { setError("Image uploads are limited to 10 MB."); return; }
-    setExpanded(true);
-    if (status !== "connected") {
-      pendingPhotoRef.current = file;
-      const connected = await startText();
-      if (!connected) pendingPhotoRef.current = null;
-      return;
-    }
-    await uploadPhoto(file);
-  }, [startText, status, uploadPhoto]);
-
-  useEffect(() => {
-    const onStart = () => { void startVoice(); };
-    const onStop = () => { void stopSession(); };
-    const onPhoto = (event: Event) => {
-      const file = (event as CustomEvent<File>).detail;
-      if (file instanceof File) void handlePhotoSelected(file);
-    };
-    window.addEventListener("neas-ai-start-voice", onStart);
-    window.addEventListener("neas-ai-stop-voice", onStop);
-    window.addEventListener("neas-ai-photo-selected", onPhoto);
-    return () => {
-      window.removeEventListener("neas-ai-start-voice", onStart);
-      window.removeEventListener("neas-ai-stop-voice", onStop);
-      window.removeEventListener("neas-ai-photo-selected", onPhoto);
-    };
-  }, [handlePhotoSelected, startVoice, stopSession]);
-
-  useEffect(() => {
-    if (status !== "connected" || !pendingPhotoRef.current) return;
-    const file = pendingPhotoRef.current;
-    pendingPhotoRef.current = null;
-    void uploadPhoto(file);
-  }, [status, uploadPhoto]);
-
   const startText = useCallback(async () => {
     if (startLock.current || status === "connecting") return false;
     if (status === "connected" && sessionModeRef.current === "text") return true;
@@ -279,6 +224,61 @@ export default function ElevenLabsVoiceWidget() {
       setError("The session could not be closed cleanly. You can retry.");
     }
   }, [endSession]);
+
+  const uploadPhoto = useCallback(async (file: File) => {
+    setError("");
+    setPending(true);
+    dispatchProcessing(true);
+    try {
+      const uploaded = await uploadFile(file);
+      sendMultimodalMessage({
+        text: "Please inspect the attached image and describe the visible details. Separate direct observations from assumptions. For technical or safety-related images, identify uncertainties and do not issue an engineering or HSE approval.",
+        fileId: uploaded.fileId,
+      });
+      setMessages((previous) => [...previous, { id: `photo:${Date.now()}:${previous.length}`, role: "user", text: `Image attached: ${file.name}` }]);
+    } catch (cause) {
+      setPending(false);
+      dispatchProcessing(false);
+      setError(cause instanceof Error ? cause.message : "The image could not be uploaded to NEAS AI.");
+    }
+  }, [sendMultimodalMessage, uploadFile]);
+
+  const handlePhotoSelected = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) { setError("Only image files are supported."); return; }
+    if (file.size > 10 * 1024 * 1024) { setError("Image uploads are limited to 10 MB."); return; }
+    setExpanded(true);
+    if (status !== "connected") {
+      pendingPhotoRef.current = file;
+      const connected = await startText();
+      if (!connected) pendingPhotoRef.current = null;
+      return;
+    }
+    await uploadPhoto(file);
+  }, [startText, status, uploadPhoto]);
+
+  useEffect(() => {
+    const onStart = () => { void startVoice(); };
+    const onStop = () => { void stopSession(); };
+    const onPhoto = (event: Event) => {
+      const file = (event as CustomEvent<File>).detail;
+      if (file instanceof File) void handlePhotoSelected(file);
+    };
+    window.addEventListener("neas-ai-start-voice", onStart);
+    window.addEventListener("neas-ai-stop-voice", onStop);
+    window.addEventListener("neas-ai-photo-selected", onPhoto);
+    return () => {
+      window.removeEventListener("neas-ai-start-voice", onStart);
+      window.removeEventListener("neas-ai-stop-voice", onStop);
+      window.removeEventListener("neas-ai-photo-selected", onPhoto);
+    };
+  }, [handlePhotoSelected, startVoice, stopSession]);
+
+  useEffect(() => {
+    if (status !== "connected" || !pendingPhotoRef.current) return;
+    const file = pendingPhotoRef.current;
+    pendingPhotoRef.current = null;
+    void uploadPhoto(file);
+  }, [status, uploadPhoto]);
 
   const newConversation = useCallback(async () => {
     await stopSession();
