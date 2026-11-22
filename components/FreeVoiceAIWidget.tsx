@@ -44,7 +44,10 @@ function speak(text: string, onStart: () => void, onEnd: () => void) {
   utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us"))
     || voices.find((voice) => voice.lang.toLowerCase().startsWith("en"))
     || null;
-  utterance.onstart = onStart;\n  utterance.onend = onEnd;\n  utterance.onerror = onEnd;\n  window.speechSynthesis.speak(utterance);
+  utterance.onstart = onStart;
+  utterance.onend = onEnd;
+  utterance.onerror = onEnd;
+  window.speechSynthesis.speak(utterance);
 }
 
 export default function FreeVoiceAIWidget() {
@@ -76,11 +79,28 @@ export default function FreeVoiceAIWidget() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, pending]);
 
+  useEffect(() => {
+    const onPhoto = (event: Event) => {
+      const file = (event as CustomEvent<File>).detail;
+      if (!(file instanceof File)) return;
+      if (!file.type.startsWith("image/") || file.size > 3 * 1024 * 1024) {
+        setError("Select a supported image of 3 MB or smaller.");
+        return;
+      }
+      setPhoto(file);
+      setExpanded(true);
+      setError("");
+    };
+    window.addEventListener("neas-ai-photo-selected", onPhoto);
+    return () => window.removeEventListener("neas-ai-photo-selected", onPhoto);
+  }, []);
+
   const sendMessage = useCallback(async (rawText: string, imageFile?: File | null) => {
     const text = rawText.trim();
     if ((!text && !imageFile) || busyRef.current) return;
     busyRef.current = true;
     setPending(true);
+    window.dispatchEvent(new CustomEvent("neas-ai-processing", { detail: { processing: true } }));
     setError("");
     const userMessage: ChatMessage = {
       id: `user:${Date.now()}`,
@@ -120,6 +140,7 @@ export default function FreeVoiceAIWidget() {
     } finally {
       busyRef.current = false;
       setPending(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-processing", { detail: { processing: false } }));
     }
   }, [messages]);
 
@@ -145,18 +166,21 @@ export default function FreeVoiceAIWidget() {
     };
     recognition.onerror = (event) => {
       setListening(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false } }));
       if (event.error !== "no-speech" && event.error !== "aborted") {
         setError(event.error === "not-allowed" ? "Microphone permission was denied. Allow microphone access in your browser." : `Speech recognition error: ${event.error}`);
       }
     };
     recognition.onend = () => {
       setListening(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false } }));
       recognitionRef.current = null;
     };
     recognitionRef.current = recognition;
     setListening(true);
     setVoiceEnabled(true);
     voiceEnabledRef.current = true;
+    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } }));
     setError("");
     try { recognition.start(); } catch {
       setListening(false);
@@ -169,6 +193,8 @@ export default function FreeVoiceAIWidget() {
     voiceEnabledRef.current = false;
     setVoiceEnabled(false);
     setListening(false);
+    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: false } }));
+    window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     window.speechSynthesis?.cancel();
