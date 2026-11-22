@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
   const last = messages[messages.length - 1];
   if (last.role !== "user") return deny("The latest message must be from the user.", 400);
 
-  const resolvedSpecialist: Exclude<SpecialistId, "auto"> = specialist === "auto" ? routeSpecialist(last.text) : specialist;
+  const resolvedSpecialist: SpecialistId = specialist === "auto" ? (payload.audio ? "auto" : routeSpecialist(last.text)) : specialist;
   const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [{ text: last.text }];
   if (payload.image !== undefined) {
     if (!payload.image || typeof payload.image !== "object") return deny("Invalid image attachment.", 400);
