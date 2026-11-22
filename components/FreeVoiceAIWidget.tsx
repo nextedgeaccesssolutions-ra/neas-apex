@@ -84,6 +84,12 @@ export default function FreeVoiceAIWidget() {
   const voiceEnabledRef = useRef(false);
   const busyRef = useRef(false);
   const fallbackAfterRecognitionRef = useRef(false);
+  const autoSessionRef = useRef(false);
+  const speechActiveRef = useRef(false);
+  const speechQueuedRef = useRef(false);
+  const startListeningRef = useRef<() => void>(() => undefined);
+  const vadFrameRef = useRef<number | null>(null);
+  const vadAudioContextRef = useRef<AudioContext | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -156,60 +162,132 @@ export default function FreeVoiceAIWidget() {
       if (!response.ok || !data.reply) throw new Error(data.error || "NEAS AI is temporarily unavailable.");
       const reply = data.reply.trim();
       setMessages((current) => [...current, { id: `assistant:${Date.now()}`, role: "assistant", text: reply, agent: data.agent || "NEAS AI Agent" }]);
-      if (voiceEnabledRef.current) speak(reply, () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }, (message) => setError(message));
+      if (voiceEnabledRef.current) {
+        const started = speak(reply, () => {
+          speechActiveRef.current = true;
+          setSpeaking(true);
+          window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } }));
+        }, () => {
+          speechActiveRef.current = false;
+          speechQueuedRef.current = false;
+          setSpeaking(false);
+          window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+          if (autoSessionRef.current) window.setTimeout(() => startListeningRef.current(), 350);
+        }, (message) => {
+          speechActiveRef.current = false;
+          speechQueuedRef.current = false;
+          setSpeaking(false);
+          setError(message);
+          if (autoSessionRef.current) window.setTimeout(() => startListeningRef.current(), 500);
+        });
+        speechQueuedRef.current = started;
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to reach the free AI service.");
     } finally {
       busyRef.current = false;
       setPending(false);
       window.dispatchEvent(new CustomEvent("neas-ai-processing", { detail: { processing: false } }));
+      if (autoSessionRef.current && !speechQueuedRef.current && !speechActiveRef.current) window.setTimeout(() => startListeningRef.current(), 450);
     }
   }, [messages]);
 
   const startRecordingFallback = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-      setError("This browser does not support microphone recording. Try Chrome or Edge over HTTPS.");
+      setError("This browser does not support automatic microphone input. Use Chrome or Edge over HTTPS.");
       return;
     }
-    if (recording || pending) return;
+    if (mediaRecorderRef.current?.state === "recording" || busyRef.current || !autoSessionRef.current) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      if (!autoSessionRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       mediaStreamRef.current = stream;
       const preferred = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
       const mimeType = preferred.find((type) => MediaRecorder.isTypeSupported(type));
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
+      let speechDetected = false;
+      let silenceSince = 0;
+      const startedAt = performance.now();
+      let audioContext: AudioContext | null = null;
+      try {
+        audioContext = new AudioContext();
+        vadAudioContextRef.current = audioContext;
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 1024;
+        source.connect(analyser);
+        const samples = new Uint8Array(analyser.fftSize);
+        const monitor = () => {
+          if (recorder.state !== "recording") return;
+          analyser.getByteTimeDomainData(samples);
+          let energy = 0;
+          for (let index = 0; index < samples.length; index += 1) {
+            const amplitude = (samples[index] - 128) / 128;
+            energy += amplitude * amplitude;
+          }
+          const rms = Math.sqrt(energy / samples.length);
+          const now = performance.now();
+          if (rms > 0.035) {
+            speechDetected = true;
+            silenceSince = 0;
+          } else if (speechDetected) {
+            if (!silenceSince) silenceSince = now;
+            if (now - silenceSince > 1100) { recorder.stop(); return; }
+          }
+          if (now - startedAt > 25000) { recorder.stop(); return; }
+          vadFrameRef.current = window.requestAnimationFrame(monitor);
+        };
+        vadFrameRef.current = window.requestAnimationFrame(monitor);
+      } catch {
+        setError("Automatic speech detection is unavailable in this browser. Try Chrome or Edge.");
+      }
       recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
       recorder.onerror = () => setError("Microphone recording failed. Check microphone permissions and try again.");
       recorder.onstop = async () => {
         setRecording(false);
         window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
+        if (vadFrameRef.current !== null) window.cancelAnimationFrame(vadFrameRef.current);
+        vadFrameRef.current = null;
+        if (audioContext && audioContext.state !== "closed") void audioContext.close().catch(() => undefined);
+        vadAudioContextRef.current = null;
         stream.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
+        if (!autoSessionRef.current) return;
         const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
-        if (!blob.size) { setError("No audio was captured. Please try again and speak after recording starts."); return; }
+        if (!speechDetected || !blob.size) {
+          if (autoSessionRef.current) window.setTimeout(() => startListeningRef.current(), 700);
+          return;
+        }
         try {
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onerror = () => reject(new Error("The recorded audio could not be read."));
-            reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Invalid audio data."));
+            reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Invalid image data."));
             reader.readAsDataURL(blob);
           });
-          void sendMessage("Please transcribe this voice message and respond directly to the spoken request.", null, "auto", { mimeType: blob.type || "audio/webm", data: dataUrl.split(",")[1] || "" });
-        } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to process the recorded audio."); }
+          void sendMessage("Transcribe the user's spoken request, determine the relevant NEAS specialist skill, and respond directly to the request.", null, "auto", { mimeType: blob.type.split(";")[0] || "audio/webm", data: dataUrl.split(",")[1] || "" });
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : "Unable to process the recorded audio.");
+          if (autoSessionRef.current) window.setTimeout(() => startListeningRef.current(), 700);
+        }
       };
       mediaRecorderRef.current = recorder;
-      recorder.start();
+      recorder.start(250);
+      window.setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 25000);
       setRecording(true);
       window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: voiceEnabledRef.current } }));
       setError("");
     } catch (cause) {
       setError(cause instanceof DOMException && cause.name === "NotAllowedError"
-        ? "Microphone permission was denied. Allow microphone access for this site, then try again."
+        ? "Microphone permission was denied. Allow microphone access for this site, then tap the NEAS CORE again."
         : "Unable to access the microphone. Check that it is connected and not being used by another app.");
+      autoSessionRef.current = false;
+      voiceEnabledRef.current = false;
+      setVoiceEnabled(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: false } }));
     }
-  }, [recording, pending, sendMessage]);
-
+  }, [sendMessage]);
   const startListening = useCallback(() => {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!autoSessionRef.current || busyRef.current || recognitionRef.current || mediaRecorderRef.current?.state === "recording") return;
