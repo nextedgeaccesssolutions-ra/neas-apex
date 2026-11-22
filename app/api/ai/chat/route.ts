@@ -4,7 +4,12 @@ import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-sec
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
+const MODEL_CANDIDATES = [...new Set([
+  process.env.GEMINI_MODEL?.trim(),
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.5-flash",
+].filter((value): value is string => Boolean(value)))];
 const SYSTEM_INSTRUCTION = [
   "You are NEAS Engineering AI for NextEdge Access Solutions.",
   "Support rope access, renewable energy, offshore and onshore operations, wind and solar, power plants, industrial inspection, project planning, commercial proposals, BOQ and costing.",
@@ -137,33 +142,53 @@ export async function POST(request: NextRequest) {
   contents.push({ role: "user", parts });
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nActive specialist agent: ${SPECIALIST_LABELS[resolvedSpecialist]}.
-
-Specialist operating instructions: ${SPECIALIST_GUIDANCE[resolvedSpecialist]}` }] },
-          contents,
-          generationConfig: { temperature: 0.35, maxOutputTokens: 1200 },
-        }),
-        cache: "no-store",
-        signal: AbortSignal.timeout(25_000),
-      },
-    );
-
-    const result = await response.json().catch(() => ({})) as {
+    type GeminiResult = {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
       error?: { message?: string; status?: string };
     };
-    if (!response.ok) {
-      if (response.status === 429) return deny("Gemini free-tier quota is temporarily exhausted. Try again later.", 429);
-      if (response.status === 400) return deny("The AI service rejected this request. Check the message or image and retry.", 400);
-      if (response.status === 404) return deny(`The configured Gemini model (${MODEL}) was not found. Set GEMINI_MODEL to a currently supported Gemini model.`, 502);
-      return deny("The free AI service is temporarily unavailable.", 502);
+    let result: GeminiResult = {};
+    let response: Response | null = null;
+    let activeModel = MODEL_CANDIDATES[0];
+
+    for (let index = 0; index < MODEL_CANDIDATES.length; index += 1) {
+      const model = MODEL_CANDIDATES[index];
+      const candidateResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nActive specialist agent: ${SPECIALIST_LABELS[resolvedSpecialist]}.
+
+Specialist operating instructions: ${SPECIALIST_GUIDANCE[resolvedSpecialist]}` }] },
+            contents,
+            generationConfig: { temperature: 0.35, maxOutputTokens: 1200 },
+          }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(25_000),
+        },
+      );
+
+      const candidateResult = await candidateResponse.json().catch(() => ({})) as GeminiResult;
+      if (!candidateResponse.ok) {
+        const providerMessage = candidateResult.error?.message || "";
+        const modelUnavailable = candidateResponse.status === 404
+          || candidateResult.error?.status === "NOT_FOUND"
+          || /model.{0,80}(not found|does not exist|unsupported)/i.test(providerMessage);
+        if (modelUnavailable && index < MODEL_CANDIDATES.length - 1) continue;
+        if (candidateResponse.status === 429) return deny("Gemini quota is temporarily exhausted. Please try again later.", 429);
+        if (modelUnavailable) return deny("No configured Gemini model is currently available to this API key. Set GEMINI_MODEL to a supported model in Vercel.", 502);
+        if (candidateResponse.status === 400) return deny("The AI service rejected this request. Check the message or attachment and retry.", 400);
+        return deny("The Gemini AI service is temporarily unavailable.", 502);
+      }
+
+      response = candidateResponse;
+      result = candidateResult;
+      activeModel = model;
+      break;
     }
+
+    if (!response) return deny("No supported Gemini model responded. Check the GEMINI_MODEL setting and API-key model access.", 502);
 
     const reply = result.candidates?.[0]?.content?.parts
       ?.map((part) => part.text || "")
@@ -171,7 +196,7 @@ Specialist operating instructions: ${SPECIALIST_GUIDANCE[resolvedSpecialist]}` }
       .trim();
     if (!reply) return deny("The AI service returned an empty response. Please retry.", 502);
 
-    return NextResponse.json({ reply, model: MODEL, specialist: resolvedSpecialist, agent: SPECIALIST_LABELS[resolvedSpecialist] }, {
+    return NextResponse.json({ reply, model: activeModel, specialist: resolvedSpecialist, agent: SPECIALIST_LABELS[resolvedSpecialist] }, {
       headers: { "Cache-Control": "no-store, max-age=0", "X-Content-Type-Options": "nosniff" },
     });
   } catch {
