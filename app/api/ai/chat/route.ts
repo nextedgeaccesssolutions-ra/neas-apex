@@ -4,7 +4,7 @@ import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-sec
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash-lite";
+const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
 const SYSTEM_INSTRUCTION = [
   "You are NEAS Engineering AI for NextEdge Access Solutions.",
   "Support rope access, renewable energy, offshore and onshore operations, wind and solar, power plants, industrial inspection, project planning, commercial proposals, BOQ and costing.",
@@ -135,6 +135,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       if (response.status === 429) return deny("Gemini free-tier quota is temporarily exhausted. Try again later.", 429);
       if (response.status === 400) return deny("The AI service rejected this request. Check the message or image and retry.", 400);
+      if (response.status === 404) return deny(`The configured Gemini model (${MODEL}) was not found. Set GEMINI_MODEL to a currently supported Gemini model.`, 502);
       return deny("The free AI service is temporarily unavailable.", 502);
     }
 
