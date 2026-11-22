@@ -183,6 +183,7 @@ export default function FreeVoiceAIWidget() {
       recorder.onerror = () => setError("Microphone recording failed. Check microphone permissions and try again.");
       recorder.onstop = async () => {
         setRecording(false);
+        window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: true } }));
         stream.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
         const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
@@ -204,6 +205,7 @@ export default function FreeVoiceAIWidget() {
       setRecording(true);
       setVoiceEnabled(true);
       voiceEnabledRef.current = true;
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } }));
       setError("Recording. Press STOP RECORDING when you have finished speaking.");
     } catch (cause) {
       setError(cause instanceof DOMException && cause.name === "NotAllowedError"
@@ -295,6 +297,7 @@ export default function FreeVoiceAIWidget() {
   const enableVoiceOutput = () => {
     voiceEnabledRef.current = true;
     setVoiceEnabled(true);
+    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: true } }));
     setError("");
     speak("NEAS AI voice output is enabled.", () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }, (message) => setError(message));
   };
