@@ -75,8 +75,6 @@ export default function FreeVoiceAIWidget() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const [recognitionSupported, setRecognitionSupported] = useState(false);
-  const [audioCaptureSupported, setAudioCaptureSupported] = useState(false);
   const [recording, setRecording] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -89,8 +87,6 @@ export default function FreeVoiceAIWidget() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setRecognitionSupported(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
-    setAudioCaptureSupported(Boolean(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function" && typeof window.MediaRecorder !== "undefined"));
     return () => {
       recognitionRef.current?.abort();
       if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
