@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@elevenlabs/react": "1.20.0",
     "@miosa/sdk": "^3.2.5",
     "@notionhq/client": "^5.22.0",
     "@slack/web-api": "^7.16.0",
