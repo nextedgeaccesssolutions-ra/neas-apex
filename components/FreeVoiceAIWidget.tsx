@@ -206,7 +206,7 @@ export default function FreeVoiceAIWidget() {
       recorder.start();
       setRecording(true);
       window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: voiceEnabledRef.current } }));
-      setError("Recording. Press STOP RECORDING when you have finished speaking.");
+      setError("");
     } catch (cause) {
       setError(cause instanceof DOMException && cause.name === "NotAllowedError"
         ? "Microphone permission was denied. Allow microphone access for this site, then try again."
@@ -327,7 +327,7 @@ export default function FreeVoiceAIWidget() {
 
   const launchTask = (prompt: string, specialist: SpecialistId) => void sendMessage(prompt, null, specialist);
 
-  const statusText = pending ? "THINKING" : listening ? "LISTENING" : speaking ? "SPEAKING" : voiceEnabled ? "VOICE READY" : "STANDBY";
+  const statusText = pending ? "THINKING" : recording ? "RECORDING" : listening ? "LISTENING" : speaking ? "SPEAKING" : voiceEnabled ? "VOICE READY" : "STANDBY";
 
   return (
     <section style={panelStyle} aria-label="NEAS free AI conversation">
