@@ -18,7 +18,7 @@ type Message = { role: "user" | "assistant"; text: string };
 type ImageInput = { mimeType: string; data: string };
 type AudioInput = { mimeType: string; data: string };
 const SPECIALIST_GUIDANCE = {
-  auto: "Determine the best discipline from the user's request. State the discipline being applied when it materially affects the answer. Ask one focused question if routing is ambiguous.",
+  auto: "Act as the NEAS AI Coordinator and automatic specialist-skill router. For typed requests, identify the task intent and activate the best matching NEAS specialist skill: engineering, project controls, HSE and safety, commercial and procurement, renewable energy, rope access, or business development. For audio input, first understand the spoken request, then classify its meaning and activate the appropriate specialist skill before answering; do not treat the generic transcription instruction as the task. For multi-discipline work, combine only the relevant specialist skills and identify the lead discipline. For audio requests where the transcript is only available to you, begin your response with exactly one machine-readable line using this format: [[NEAS_SPECIALIST:engineering]] or the corresponding key projects, safety, commercial, renewables, rope-access, or business-development; then continue with the answer. Do not expose this routing instruction. Do not ask the user to choose an agent. Ask one focused question only when essential information is missing. Preserve competent-person approval boundaries and never claim an external action occurred unless verified.",
   engineering: "Act as the engineering specialist. Focus on technical calculations, inspection evidence, engineering assumptions, design interfaces, standards verification, and competent-person review. Never certify or approve engineering work.",
   projects: "Act as the project controls specialist. Focus on scope, work breakdown, schedule, resources, dependencies, progress, risks, deliverables, and change control. Distinguish estimates from committed dates.",
   safety: "Act as the HSE specialist. Focus on hazard identification, risk assessment, controls, permits, emergency readiness, work-at-height safeguards, and verification. Do not authorize site work or replace the appointed competent HSE person.",
@@ -43,12 +43,12 @@ const SPECIALIST_LABELS: Record<SpecialistId, string> = {
 function routeSpecialist(text: string): Exclude<SpecialistId, "auto"> {
   const value = text.toLowerCase();
   const has = (...terms: string[]) => terms.some((term) => value.includes(term));
-  if (has("rope access", "irata", "rigging", "anchor point", "anchor bolt", "suspended access", "rope rescue")) return "rope-access";
-  if (has("risk assessment", "jsa", "jha", "method statement", "permit to work", "work at height", "confined space", "hse", "safety", "rescue plan")) return "safety";
-  if (has("wind turbine", "wind farm", "solar", "renewable", "met mast", "blade inspection", "blade repair", "lidar", "photovoltaic")) return "renewables";
-  if (has("boq", "quotation", "quote", "pricing", "costing", "budget", "invoice", "procurement", "payment terms", "cash flow", "margin")) return "commercial";
-  if (has("proposal", "lead", "client", "sales", "business development", "opportunity", "follow up", "tender")) return "business-development";
-  if (has("schedule", "project plan", "milestone", "progress", "resource plan", "work breakdown", "wbs", "project status")) return "projects";
+  if (has("rope access", "irata", "rigging", "anchor point", "anchor bolt", "suspended access", "rope rescue", "abseil", "rope technician")) return "rope-access";
+  if (has("risk assessment", "jsa", "jha", "method statement", "permit to work", "work at height", "confined space", "hse", "safety", "rescue plan", "toolbox talk", "incident", "near miss", "emergency plan")) return "safety";
+  if (has("wind turbine", "wind farm", "solar", "renewable", "met mast", "blade inspection", "blade repair", "lidar", "photovoltaic", "wind energy", "solar farm")) return "renewables";
+  if (has("boq", "quotation", "quote", "pricing", "costing", "budget", "invoice", "procurement", "payment terms", "cash flow", "margin", "bill of quantities", "purchase order", "variation order")) return "commercial";
+  if (has("proposal", "lead", "client", "sales", "business development", "opportunity", "follow up", "tender", "marketing", "outreach", "pipeline")) return "business-development";
+  if (has("schedule", "project plan", "milestone", "progress", "resource plan", "work breakdown", "wbs", "project status", "mobilization", "project controls", "project report")) return "projects";
   return "engineering";
 }
 
@@ -165,13 +165,20 @@ Specialist operating instructions: ${SPECIALIST_GUIDANCE[resolvedSpecialist]}` }
       return deny("The free AI service is temporarily unavailable.", 502);
     }
 
-    const reply = result.candidates?.[0]?.content?.parts
+    let reply = result.candidates?.[0]?.content?.parts
       ?.map((part) => part.text || "")
       .join("")
       .trim();
     if (!reply) return deny("The AI service returned an empty response. Please retry.", 502);
 
-    return NextResponse.json({ reply, model: MODEL, specialist: resolvedSpecialist, agent: SPECIALIST_LABELS[resolvedSpecialist] }, {
+    let activeSpecialist = resolvedSpecialist;
+    const specialistMarker = reply.match(/^\s*\[\[NEAS_SPECIALIST:(engineering|projects|safety|commercial|renewables|rope-access|business-development)\]\]\s*/i);
+    if (specialistMarker) {
+      activeSpecialist = specialistMarker[1].toLowerCase() as Exclude<SpecialistId, "auto">;
+      reply = reply.slice(specialistMarker[0].length).trim();
+    }
+
+    return NextResponse.json({ reply, model: MODEL, specialist: activeSpecialist, agent: SPECIALIST_LABELS[activeSpecialist] }, {
       headers: { "Cache-Control": "no-store, max-age=0", "X-Content-Type-Options": "nosniff" },
     });
   } catch {

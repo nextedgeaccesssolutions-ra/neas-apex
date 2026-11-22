@@ -359,8 +359,9 @@ export default function ApexWorld() {
         <ApexVoiceAvatar state={orbState} connected={conversationStatus === "connected"} />
         <button
           type="button"
-          aria-label="Start voice conversation with NEAS AI CORE"
-          title="Tap to speak with NEAS AI CORE"
+          aria-label={isVoiceEnabled ? "Stop NEAS AI CORE voice session" : "Start NEAS AI CORE voice session"}
+          aria-pressed={isVoiceEnabled}
+          title={isVoiceEnabled ? "Tap to stop the voice session" : "Tap once to start automatic listening and spoken replies"}
           onClick={() => window.dispatchEvent(new CustomEvent("neas-ai-start-voice"))}
           style={{ position:"absolute", left:"50%", top:"50%", width:92, height:92, transform:"translate(-50%,-50%)", border:0, borderRadius:"50%", background:"transparent", cursor:"pointer", zIndex:9, pointerEvents:"auto" }}
         />
