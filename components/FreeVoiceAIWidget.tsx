@@ -143,7 +143,7 @@ export default function FreeVoiceAIWidget() {
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onerror = () => reject(new Error("The selected image could not be read."));
-          reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Invalid image data."));
+          reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Invalid audio data."));
           reader.readAsDataURL(imageFile);
         });
         image = { mimeType: imageFile.type, data: dataUrl.split(",")[1] || "" };
@@ -212,6 +212,7 @@ export default function FreeVoiceAIWidget() {
       let audioContext: AudioContext | null = null;
       try {
         audioContext = new AudioContext();
+        if (audioContext.state === "suspended") await audioContext.resume();
         vadAudioContextRef.current = audioContext;
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
@@ -228,7 +229,7 @@ export default function FreeVoiceAIWidget() {
           }
           const rms = Math.sqrt(energy / samples.length);
           const now = performance.now();
-          if (rms > 0.035) {
+          if (rms > 0.025) {
             speechDetected = true;
             silenceSince = 0;
           } else if (speechDetected) {
