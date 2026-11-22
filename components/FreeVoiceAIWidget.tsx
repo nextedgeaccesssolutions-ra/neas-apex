@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import EngineeringAITaskEngine from "./EngineeringAITaskEngine";
+import EngineeringAITaskEngine, { type SpecialistId } from "./EngineeringAITaskEngine";
 import EngineeringAIWelcome from "./EngineeringAIWelcome";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
@@ -95,7 +95,7 @@ export default function FreeVoiceAIWidget() {
     return () => window.removeEventListener("neas-ai-photo-selected", onPhoto);
   }, []);
 
-  const sendMessage = useCallback(async (rawText: string, imageFile?: File | null) => {
+  const sendMessage = useCallback(async (rawText: string, imageFile?: File | null, specialist: SpecialistId = "auto") => {
     const text = rawText.trim();
     if ((!text && !imageFile) || busyRef.current) return;
     busyRef.current = true;
@@ -126,6 +126,7 @@ export default function FreeVoiceAIWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          specialist,
           messages: nextMessages.slice(-12).map(({ role, text: messageText }) => ({ role, text: messageText })),
           ...(image ? { image } : {}),
         }),
@@ -217,7 +218,7 @@ export default function FreeVoiceAIWidget() {
     void sendMessage(input, photo);
   };
 
-  const launchTask = (prompt: string) => void sendMessage(prompt);
+  const launchTask = (prompt: string, specialist: SpecialistId) => void sendMessage(prompt, null, specialist);
 
   const statusText = pending ? "THINKING" : listening ? "LISTENING" : speaking ? "SPEAKING" : voiceEnabled ? "VOICE READY" : "STANDBY";
 
