@@ -16,7 +16,7 @@ export default function Home() {
       </section>
       <ElevenLabsVoiceWidget />
       <a
-        href="https://github.com/nextedgeaccesssolutions-ra/APEX-UI"
+        href="https://github.com/nextedgeaccesssolutions-ra/neas-apex"
         target="_blank"
         rel="noopener noreferrer"
         style={{

@@ -15,6 +15,7 @@ import ApexHeroOrb, { type OrbState } from "./ApexHeroOrb";
 import ReasoningWebJs from "./ReasoningWeb";
 import ShaderBackgroundJs from "./ShaderBackground";
 import OrbStatusBar from "./OrbStatusBar";
+import ApexVoiceAvatar from "./ApexVoiceAvatar";
 import { useConversationMode, useConversationStatus } from "@elevenlabs/react";
 
 export type NodeSel = { name: string; key: string; color: string };
@@ -239,22 +240,13 @@ export default function ApexWorld() {
 
   // A tap cycles idle → thinking → speaking → idle. That state drives the
   // backdrop, the light-cast and the reasoning web's activity level.
-  const [showState, setShowState] = useState<OrbState>("idle");
-  const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showState] = useState<OrbState>("idle");
   const voiceState: OrbState | null = conversationStatus === "connecting"
     ? "thinking"
     : conversationStatus === "connected"
       ? isSpeaking ? "speaking" : isProcessing ? "thinking" : isListening ? "listening" : "thinking"
       : null;
   const orbState: OrbState = voiceState ?? showState;
-
-  const boost = () => {
-    const next: OrbState = showState === "idle" ? "thinking" : showState === "thinking" ? "speaking" : "idle";
-    setShowState(next);
-    if (showTimer.current) clearTimeout(showTimer.current);
-    showTimer.current = setTimeout(() => setShowState("idle"), 8000);
-  };
-  useEffect(() => () => { if (showTimer.current) clearTimeout(showTimer.current); }, []);
 
   useEffect(() => {
     const handleProcessing = (event: Event) => {
@@ -337,26 +329,15 @@ export default function ApexWorld() {
         </ul>
       </nav>
 
-      {/* the core - painted ABOVE the web (app order); display-only, the tap target
-          is the circular disc below so agent nodes near the ring stay clickable */}
+      {/* the core - painted ABOVE the reasoning web; the avatar owns the voice/photo controls */}
       <div style={{ position: "absolute", left: "50%", top: "50%", width: "min(560px, 58vw)", height: "min(500px, 56vw, 70vh)", transform: "translate(-50%, -50%)", zIndex: 3, pointerEvents: "none" }}>
         <ApexHeroOrb state={orbState} interactive={false} />
       </div>
 
-      {/* central tap disc - covers the ring only (nodes orbit outside it) */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Apex core - tap to energize"
-        onClick={boost}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); boost(); } }}
-        onMouseDown={(e) => e.preventDefault()}
-        style={{
-          position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
-          width: "min(340px, 36vw)", height: "min(340px, 36vw)", borderRadius: "50%",
-          zIndex: 4, cursor: "pointer", background: "transparent", border: "none", userSelect: "none",
-        }}
-      />
+      {/* The animated face and real voice/photo controls occupy the existing central gold orb. */}
+      <div style={{ position:"absolute", left:"50%", top:"50%", width:"min(340px,58vw)", height:"min(340px,58vw)", transform:"translate(-50%,-50%)", zIndex:5, pointerEvents:"none" }}>
+        <ApexVoiceAvatar state={orbState} connected={conversationStatus === "connected"} />
+      </div>
 
       {/* equalizer + STANDBY cluster */}
       <OrbStatusBar state={orbState} />

@@ -61,6 +61,7 @@ export default function ElevenLabsVoiceWidget() {
   const startLock = useRef(false);
   const sessionModeRef = useRef<"none" | "voice" | "text">("none");
   const seenMessageIds = useRef(new Set<string>());
+  const pendingPhotoRef = useRef<File | null>(null);
 
   const appendMessage = useCallback((role: "user" | "assistant", value: unknown) => {
     const text = extractMessageText(value);
@@ -102,7 +103,7 @@ export default function ElevenLabsVoiceWidget() {
     },
   });
 
-  const { status, isSpeaking, isListening, isMuted, setMuted, startSession, endSession, sendUserMessage, sendUserActivity, getOutputVolume } = conversation;
+  const { status, isSpeaking, isListening, isMuted, setMuted, startSession, endSession, sendUserMessage, sendUserActivity, getOutputVolume, uploadFile, sendMultimodalMessage } = conversation;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -137,18 +138,19 @@ export default function ElevenLabsVoiceWidget() {
     setPending(false);
     try {
       if (status === "connected") await endSession();
-      const signedResponse = await fetch("/api/elevenlabs/signed-url", { cache: "no-store" });
-      const signedData = await signedResponse.json().catch(() => ({})) as { signedUrl?: string; error?: string };
-      if (!signedResponse.ok || typeof signedData.signedUrl !== "string" || signedData.signedUrl.length === 0) {
-        throw new Error(signedData.error || "Voice authentication is not configured. Add ELEVENLABS_API_KEY in Vercel to enable voice.");
+      const configResponse = await fetch("/api/elevenlabs/config", { cache: "no-store" });
+      const configData = await configResponse.json().catch(() => ({})) as { agentId?: string; branchId?: string; error?: string };
+      if (!configResponse.ok || !configData.agentId || !configData.branchId) {
+        throw new Error(configData.error || "NEAS AI voice configuration is unavailable.");
       }
 
       const greetingAlreadySpoken = window.sessionStorage.getItem(GREETING_KEY) === "1";
+      // The client SDK forwards branchId to ElevenLabs; the React 1.20 wrapper type omits it.
       await startSession({
-        signedUrl: signedData.signedUrl,
-        connectionType: "websocket",
+        agentId: configData.agentId,
+        branchId: configData.branchId,
         ...(greetingAlreadySpoken ? { overrides: { agent: { firstMessage: "" } } } : {}),
-      });
+      } as unknown as Parameters<typeof startSession>[0]);
       sessionModeRef.current = "voice";
       setSessionMode("voice");
     } catch (cause) {
@@ -171,17 +173,17 @@ export default function ElevenLabsVoiceWidget() {
     setPending(false);
     try {
       if (status === "connected") await endSession();
-      const signedResponse = await fetch("/api/elevenlabs/signed-url", { cache: "no-store" });
-      const signedData = await signedResponse.json().catch(() => ({})) as { signedUrl?: string; error?: string };
-      if (!signedResponse.ok || typeof signedData.signedUrl !== "string" || signedData.signedUrl.length === 0) {
-        throw new Error(signedData.error || "Text chat is not configured. Add ELEVENLABS_API_KEY in Vercel to enable the Engineering AI session.");
+      const configResponse = await fetch("/api/elevenlabs/config", { cache: "no-store" });
+      const configData = await configResponse.json().catch(() => ({})) as { agentId?: string; branchId?: string; error?: string };
+      if (!configResponse.ok || !configData.agentId || !configData.branchId) {
+        throw new Error(configData.error || "NEAS AI text configuration is unavailable.");
       }
 
       await startSession({
-        signedUrl: signedData.signedUrl,
-        connectionType: "websocket",
+        agentId: configData.agentId,
+        branchId: configData.branchId,
         overrides: { conversation: { textOnly: true }, agent: { firstMessage: "" } },
-      });
+      } as unknown as Parameters<typeof startSession>[0]);
       sessionModeRef.current = "text";
       setSessionMode("text");
       return true;
@@ -224,6 +226,62 @@ export default function ElevenLabsVoiceWidget() {
       setError("The session could not be closed cleanly. You can retry.");
     }
   }, [endSession]);
+
+  const uploadPhoto = useCallback(async (file: File) => {
+    setError("");
+    setPending(true);
+    dispatchProcessing(true);
+    try {
+      const uploaded = await uploadFile(file);
+      sendMultimodalMessage({
+        text: "Please inspect the attached image and describe the visible details. Separate direct observations from assumptions. For technical or safety-related images, identify uncertainties and do not issue an engineering or HSE approval.",
+        fileId: uploaded.fileId,
+      });
+      setMessages((previous) => [...previous, { id: `photo:${Date.now()}:${previous.length}`, role: "user", text: `Image attached: ${file.name}` }]);
+    } catch (cause) {
+      setPending(false);
+      dispatchProcessing(false);
+      setError(cause instanceof Error ? cause.message : "The image could not be uploaded to NEAS AI.");
+    }
+  }, [sendMultimodalMessage, uploadFile]);
+
+  const handlePhotoSelected = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) { setError("Only image files are supported."); return; }
+    if (file.size > 10 * 1024 * 1024) { setError("Image uploads are limited to 10 MB."); return; }
+    setExpanded(true);
+    if (status !== "connected") {
+      pendingPhotoRef.current = file;
+      if (status === "connecting") return;
+      const connected = await startText();
+      if (!connected) pendingPhotoRef.current = null;
+      return;
+    }
+    await uploadPhoto(file);
+  }, [startText, status, uploadPhoto]);
+
+  useEffect(() => {
+    const onStart = () => { void startVoice(); };
+    const onStop = () => { void stopSession(); };
+    const onPhoto = (event: Event) => {
+      const file = (event as CustomEvent<File>).detail;
+      if (file instanceof File) void handlePhotoSelected(file);
+    };
+    window.addEventListener("neas-ai-start-voice", onStart);
+    window.addEventListener("neas-ai-stop-voice", onStop);
+    window.addEventListener("neas-ai-photo-selected", onPhoto);
+    return () => {
+      window.removeEventListener("neas-ai-start-voice", onStart);
+      window.removeEventListener("neas-ai-stop-voice", onStop);
+      window.removeEventListener("neas-ai-photo-selected", onPhoto);
+    };
+  }, [handlePhotoSelected, startVoice, stopSession]);
+
+  useEffect(() => {
+    if (status !== "connected" || !pendingPhotoRef.current) return;
+    const file = pendingPhotoRef.current;
+    pendingPhotoRef.current = null;
+    void uploadPhoto(file);
+  }, [status, uploadPhoto]);
 
   const newConversation = useCallback(async () => {
     await stopSession();
