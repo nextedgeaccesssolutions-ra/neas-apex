@@ -243,7 +243,7 @@ export default function ApexWorld() {
   // backdrop, the light-cast and the reasoning web's activity level.
   const [showState] = useState<OrbState>("idle");
   const voiceState: OrbState | null = isVoiceEnabled
-    ? isSpeaking ? "speaking" : isProcessing ? "thinking" : isListening ? "listening" : "thinking"
+    ? isSpeaking ? "speaking" : isProcessing ? "thinking" : isListening ? "listening" : "idle"
     : null;
   const orbState: OrbState = voiceState ?? showState;
 
