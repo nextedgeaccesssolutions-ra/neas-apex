@@ -216,12 +216,11 @@ export default function FreeVoiceAIWidget() {
 
   const startListening = useCallback(() => {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!autoSessionRef.current || busyRef.current || recognitionRef.current || mediaRecorderRef.current?.state === "recording") return;
     if (!Recognition) {
       void startRecordingFallback();
       return;
     }
-    if (listening || pending) return;
-    window.speechSynthesis?.cancel();
     const recognition = new Recognition();
     recognition.lang = "en-US";
     recognition.interimResults = true;
@@ -236,26 +235,28 @@ export default function FreeVoiceAIWidget() {
     };
     recognition.onerror = (event) => {
       setListening(false);
-      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false } }));
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
       if (event.error === "network" || event.error === "service-not-allowed") {
-        setError("Browser speech recognition is unavailable. Switching to the built-in microphone recorder…");
-        void startRecordingFallback();
-      } else if (event.error === "not-allowed") {
-        setError("Microphone permission was denied. Allow microphone access in your browser, then try again.");
-      } else if (event.error !== "no-speech" && event.error !== "aborted") {
-        setError(`Speech recognition error: ${event.error}`);
-      } else if (event.error === "no-speech") {
         fallbackAfterRecognitionRef.current = true;
-        setError("Browser recognition did not capture speech. Switching to microphone recording…");
+      } else if (event.error === "not-allowed") {
+        setError("Microphone permission was denied. Allow microphone access for this site.");
+        autoSessionRef.current = false;
+        voiceEnabledRef.current = false;
+        setVoiceEnabled(false);
+      } else if (event.error !== "no-speech" && event.error !== "aborted") {
+        setError("Speech recognition error: " + event.error);
       }
     };
     recognition.onend = () => {
       setListening(false);
       window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
       recognitionRef.current = null;
-      if (fallbackAfterRecognitionRef.current && !busyRef.current) {
+      if (!autoSessionRef.current || busyRef.current || speechActiveRef.current || speechQueuedRef.current) return;
+      if (fallbackAfterRecognitionRef.current) {
         fallbackAfterRecognitionRef.current = false;
         void startRecordingFallback();
+      } else {
+        window.setTimeout(() => startListeningRef.current(), 450);
       }
     };
     recognitionRef.current = recognition;
@@ -266,11 +267,17 @@ export default function FreeVoiceAIWidget() {
       setListening(false);
       recognitionRef.current = null;
       window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
-      setError("The microphone could not start. Please try again.");
+      if (autoSessionRef.current) window.setTimeout(() => startRecordingFallback(), 500);
     }
-  }, [listening, pending, sendMessage, startRecordingFallback]);
+  }, [sendMessage, startRecordingFallback]);
 
+  useEffect(() => {
+    startListeningRef.current = startListening;
+  }, [startListening]);
   const stopVoice = useCallback(() => {
+    autoSessionRef.current = false;
+    speechQueuedRef.current = false;
+    speechActiveRef.current = false;
     voiceEnabledRef.current = false;
     setVoiceEnabled(false);
     setListening(false);
@@ -279,6 +286,10 @@ export default function FreeVoiceAIWidget() {
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    if (vadFrameRef.current !== null) window.cancelAnimationFrame(vadFrameRef.current);
+    vadFrameRef.current = null;
+    if (vadAudioContextRef.current && vadAudioContextRef.current.state !== "closed") void vadAudioContextRef.current.close().catch(() => undefined);
+    vadAudioContextRef.current = null;
     mediaRecorderRef.current = null;
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     mediaStreamRef.current = null;
@@ -287,8 +298,38 @@ export default function FreeVoiceAIWidget() {
     setSpeaking(false);
   }, []);
 
+  const startVoiceSession = useCallback(() => {
+    if (autoSessionRef.current) return;
+    autoSessionRef.current = true;
+    voiceEnabledRef.current = true;
+    setVoiceEnabled(true);
+    setError("");
+    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: true } }));
+    const started = speak("NEAS AI is online. I am listening. How can I help?", () => {
+      speechActiveRef.current = true;
+      setSpeaking(true);
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } }));
+    }, () => {
+      speechActiveRef.current = false;
+      setSpeaking(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+      if (autoSessionRef.current) window.setTimeout(() => startListeningRef.current(), 300);
+    }, (message) => {
+      speechActiveRef.current = false;
+      autoSessionRef.current = false;
+      voiceEnabledRef.current = false;
+      setVoiceEnabled(false);
+      setError(message);
+    });
+    if (!started) {
+      autoSessionRef.current = false;
+      voiceEnabledRef.current = false;
+      setVoiceEnabled(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const onStart = () => startListening();
+    const onStart = () => { if (autoSessionRef.current) stopVoice(); else startVoiceSession(); };
     const onStop = () => stopVoice();
     window.addEventListener("neas-ai-start-voice", onStart);
     window.addEventListener("neas-ai-stop-voice", onStop);
@@ -296,29 +337,7 @@ export default function FreeVoiceAIWidget() {
       window.removeEventListener("neas-ai-start-voice", onStart);
       window.removeEventListener("neas-ai-stop-voice", onStop);
     };
-  }, [startListening, stopVoice]);
-
-  const enableVoiceOutput = () => {
-    setError("");
-    const started = speak("NEAS AI voice output is now active. I will speak my replies.", () => {
-      voiceEnabledRef.current = true;
-      setVoiceEnabled(true);
-      setSpeaking(true);
-      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: true } }));
-      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } }));
-    }, () => {
-      setSpeaking(false);
-      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
-    }, (message) => {
-      voiceEnabledRef.current = false;
-      setVoiceEnabled(false);
-      setError(message);
-    });
-    if (!started) {
-      voiceEnabledRef.current = false;
-      setVoiceEnabled(false);
-    }
-  };
+  }, [startVoiceSession, stopVoice]);
 
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -360,18 +379,12 @@ export default function FreeVoiceAIWidget() {
             <button type="submit" disabled={pending || (!input.trim() && !photo)} style={{ border: "1px solid rgba(202,147,50,.35)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 8, padding: "8px 11px", fontSize: 10, fontWeight: 900, opacity: pending || (!input.trim() && !photo) ? .45 : 1, cursor: "pointer" }}>SEND</button>
           </form>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {(recognitionSupported || audioCaptureSupported) && !listening && !recording && <button type="button" disabled={pending} onClick={startListening} style={{ border: "1px solid rgba(202,147,50,.35)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 9, padding: "9px 11px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>🎙 {recognitionSupported ? "SPEAK" : "RECORD VOICE"}</button>}
-            {listening && <button type="button" onClick={() => recognitionRef.current?.stop()} style={{ border: "1px solid rgba(248,113,113,.45)", color: "#fca5a5", background: "transparent", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP LISTENING</button>}
-            {recording && <button type="button" onClick={() => mediaRecorderRef.current?.stop()} style={{ border: "1px solid rgba(248,113,113,.45)", color: "#fca5a5", background: "transparent", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP RECORDING</button>}
-            {!voiceEnabled && <button type="button" onClick={enableVoiceOutput} style={{ border: "1px solid rgba(202,147,50,.35)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>ENABLE VOICE</button>}
-            {voiceEnabled && <button type="button" onClick={stopVoice} style={{ border: "1px solid rgba(202,147,50,.35)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>VOICE OFF</button>}
-            <button type="button" onClick={() => { window.speechSynthesis?.cancel(); setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP AUDIO</button>
             <button type="button" onClick={() => fileRef.current?.click()} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>ATTACH IMAGE</button>
             <button type="button" onClick={() => { stopVoice(); setMessages([]); setInput(""); setPhoto(null); setError(""); }} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>NEW CHAT</button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) { if (file.size > 3 * 1024 * 1024) setError("Images must be 3 MB or smaller."); else setPhoto(file); } event.currentTarget.value = ""; }} />
           </div>
           <div style={{ color: "rgba(245,242,234,.42)", fontSize: 8, lineHeight: 1.45 }}>
-            Microphone input uses browser speech recognition or recorded-audio transcription. Spoken replies use your device's built-in speech engine. Enable VOICE separately once to authorize audible replies; microphone recording alone does not enable speaker output. Do not submit confidential project or personal data to free-tier AI services.
+            Tap the central NEAS CORE once to start or stop a voice session. Speech detection submits your words automatically; NEAS AI speaks replies and resumes listening. Microphone permission is controlled by your browser. Do not submit confidential project or personal data to free-tier AI services.
           </div>
         </div>
       )}
