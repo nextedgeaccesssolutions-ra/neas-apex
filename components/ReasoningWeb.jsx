@@ -59,8 +59,12 @@ export default function ReasoningWeb({ state = 'standby', trace = null, mode = '
   const svgRef = useRef(null)
   const apiRef = useRef(null)
   const stateRef = useRef(state)
-  stateRef.current = state
-  const onSelectRef = useRef(onSelect); onSelectRef.current = onSelect   // click a node → open its cockpit
+  const onSelectRef = useRef(onSelect)
+
+  useEffect(() => {
+    stateRef.current = state
+    onSelectRef.current = onSelect
+  }, [state, onSelect])
 
   useEffect(() => {
     const svg = svgRef.current
