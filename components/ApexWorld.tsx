@@ -16,7 +16,6 @@ import ReasoningWebJs from "./ReasoningWeb";
 import ShaderBackgroundJs from "./ShaderBackground";
 import OrbStatusBar from "./OrbStatusBar";
 import ApexVoiceAvatar from "./ApexVoiceAvatar";
-import { useConversationMode, useConversationStatus } from "@elevenlabs/react";
 
 export type NodeSel = { name: string; key: string; color: string };
 
@@ -232,20 +231,20 @@ export function AgentOverview({ sel, onClose }: { sel: NodeSel; onClose: () => v
 
 /* ── The world ── */
 export default function ApexWorld() {
-  const { isSpeaking, isListening } = useConversationMode();
-  const { status: conversationStatus } = useConversationStatus();
   const [selected, setSelected] = useState<NodeSel | null>(null);
   const [reduced, setReduced] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const conversationStatus = isVoiceEnabled ? "connected" : "disconnected";
 
   // A tap cycles idle → thinking → speaking → idle. That state drives the
   // backdrop, the light-cast and the reasoning web's activity level.
   const [showState] = useState<OrbState>("idle");
-  const voiceState: OrbState | null = conversationStatus === "connecting"
-    ? "thinking"
-    : conversationStatus === "connected"
-      ? isSpeaking ? "speaking" : isProcessing ? "thinking" : isListening ? "listening" : "thinking"
-      : null;
+  const voiceState: OrbState | null = isVoiceEnabled
+    ? isSpeaking ? "speaking" : isProcessing ? "thinking" : isListening ? "listening" : "thinking"
+    : null;
   const orbState: OrbState = voiceState ?? showState;
 
   useEffect(() => {
@@ -253,8 +252,23 @@ export default function ApexWorld() {
       const detail = (event as CustomEvent<{ processing?: boolean }>).detail;
       setIsProcessing(Boolean(detail?.processing));
     };
+    const handleVoiceState = (event: Event) => {
+      const detail = (event as CustomEvent<{ listening?: boolean; enabled?: boolean }>).detail;
+      if (typeof detail?.listening === "boolean") setIsListening(detail.listening);
+      if (typeof detail?.enabled === "boolean") setIsVoiceEnabled(detail.enabled);
+    };
+    const handleSpeaking = (event: Event) => {
+      const detail = (event as CustomEvent<{ speaking?: boolean }>).detail;
+      setIsSpeaking(Boolean(detail?.speaking));
+    };
     window.addEventListener("neas-ai-processing", handleProcessing);
-    return () => window.removeEventListener("neas-ai-processing", handleProcessing);
+    window.addEventListener("neas-ai-voice-state", handleVoiceState);
+    window.addEventListener("neas-ai-speaking", handleSpeaking);
+    return () => {
+      window.removeEventListener("neas-ai-processing", handleProcessing);
+      window.removeEventListener("neas-ai-voice-state", handleVoiceState);
+      window.removeEventListener("neas-ai-speaking", handleSpeaking);
+    };
   }, []);
 
   // Single entry point for opening an agent, shared by the SVG graph and the
