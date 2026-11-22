@@ -16,6 +16,7 @@ const SYSTEM_INSTRUCTION = [
 
 type Message = { role: "user" | "assistant"; text: string };
 type ImageInput = { mimeType: string; data: string };
+type AudioInput = { mimeType: string; data: string };
 const SPECIALIST_GUIDANCE = {
   auto: "Determine the best discipline from the user's request. State the discipline being applied when it materially affects the answer. Ask one focused question if routing is ambiguous.",
   engineering: "Act as the engineering specialist. Focus on technical calculations, inspection evidence, engineering assumptions, design interfaces, standards verification, and competent-person review. Never certify or approve engineering work.",
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return deny("Free AI is not configured yet. Add GEMINI_API_KEY in Vercel Environment Variables.", 503);
 
-  let payload: { messages?: unknown; image?: unknown; specialist?: unknown };
+  let payload: { messages?: unknown; image?: unknown; audio?: unknown; specialist?: unknown };
   try {
     payload = await request.json() as typeof payload;
   } catch {
@@ -90,6 +91,19 @@ export async function POST(request: NextRequest) {
       return deny("Image must be 3 MB or smaller.", 413);
     }
     parts.push({ inline_data: { mime_type: image.mimeType, data: image.data } });
+  }
+  if (payload.audio !== undefined) {
+    if (!payload.audio || typeof payload.audio !== "object") return deny("Invalid audio attachment.", 400);
+    const audio = payload.audio as Partial<AudioInput>;
+    const allowedAudioTypes = new Set(["audio/webm", "audio/ogg", "audio/mp4", "audio/wav", "audio/mpeg", "audio/aac"]);
+    const normalizedAudioType = audio.mimeType?.split(";")[0]?.toLowerCase();
+    if (!normalizedAudioType || !allowedAudioTypes.has(normalizedAudioType) || typeof audio.data !== "string") {
+      return deny("This audio format is not supported. Try recording in Chrome or Edge.", 400);
+    }
+    if (audio.data.length > 6_000_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(audio.data)) {
+      return deny("Audio recording is too large. Record a shorter voice message.", 413);
+    }
+    parts.push({ inline_data: { mime_type: normalizedAudioType, data: audio.data } });
   }
 
   const contents: Array<{ role: "user" | "model"; parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> }> = messages.slice(0, -1).map((message) => ({
