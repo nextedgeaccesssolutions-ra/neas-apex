@@ -1,33 +1,24 @@
 "use client";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useConversationControls, useConversationMode } from "@elevenlabs/react";
 import { Camera, Mic, PhoneOff, Radio } from "lucide-react";
 import type { OrbState } from "./ApexHeroOrb";
 const STATE_LABEL: Record<OrbState,string> = { idle:"STANDBY", listening:"LISTENING", thinking:"THINKING", speaking:"SPEAKING" };
 export default function ApexVoiceAvatar({state,connected}:{state:OrbState;connected:boolean}) {
-  const {isSpeaking}=useConversationMode();
-  const {getOutputVolume}=useConversationControls();
-  const [outputLevel,setOutputLevel]=useState(0);
+  const outputLevel = state === "speaking" ? 0.72 : state === "listening" ? 0.24 : 0;
   const [photoPreview,setPhotoPreview]=useState("");
   const [photoName,setPhotoName]=useState("");
   const [photoError,setPhotoError]=useState("");
   const fileInput=useRef<HTMLInputElement>(null);
-  useEffect(()=>{
-    if(!isSpeaking){setOutputLevel(0);return;}
-    const timer=window.setInterval(()=>{try{const level=getOutputVolume();setOutputLevel(Math.max(0,Math.min(1,Number.isFinite(level)?level:0)));}catch{setOutputLevel(0);}},70);
-    return ()=>window.clearInterval(timer);
-  },[getOutputVolume,isSpeaking]);
   useEffect(()=>()=>{if(photoPreview)URL.revokeObjectURL(photoPreview);},[photoPreview]);
   const startVoice=()=>window.dispatchEvent(new CustomEvent("neas-ai-start-voice"));
   const stopVoice=()=>window.dispatchEvent(new CustomEvent("neas-ai-stop-voice"));
   const choosePhoto=(event:ChangeEvent<HTMLInputElement>)=>{
     const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;
     if(!file.type.startsWith("image/")){setPhotoError("Select an image file.");return;}
-    if(file.size>10*1024*1024){setPhotoError("Image must be 10 MB or smaller.");return;}
+    if(file.size>3*1024*1024){setPhotoError("Image must be 3 MB or smaller.");return;}
     setPhotoError("");setPhotoName(file.name);setPhotoPreview(URL.createObjectURL(file));
     window.dispatchEvent(new CustomEvent("neas-ai-photo-selected",{detail:file}));
   };
-  const mouthScale=0.72+outputLevel*2.1;
   return <div className="neas-avatar-console" data-state={state} aria-label="NEAS AI holographic voice assistant">
     <div className="neas-avatar-portrait" aria-hidden="true"><div className="neas-avatar-halo"/>
       <img src="/neas-ai-avatar.webp" alt="NEAS AI holographic face" className="neas-avatar-face-image" />

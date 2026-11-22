@@ -9,12 +9,15 @@ export function isSameOriginBrowserRequest(request: NextRequest): boolean {
   const origin = headers.get("origin");
   const fetchSite = headers.get("sec-fetch-site");
 
-  if (!host) return false;
+  // Browser POST requests from fetch() include Origin. Requiring it avoids
+  // treating an origin-less request as same-origin by default.
+  if (!host || !origin) return false;
   if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "same-site") return false;
-  if (!origin) return true;
 
   try {
-    return new URL(origin).host === host;
+    const parsedOrigin = new URL(origin);
+    return (parsedOrigin.protocol === "https:" || parsedOrigin.protocol === "http:")
+      && parsedOrigin.host.toLowerCase() === host.toLowerCase();
   } catch {
     return false;
   }

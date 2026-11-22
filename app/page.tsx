@@ -1,11 +1,9 @@
 import ApexWorld from "@/components/ApexWorld";
 import ApexOverviewPanel from "@/components/ApexOverviewPanel";
-import ElevenLabsVoiceWidget from "@/components/ElevenLabsVoiceWidget";
-import EngineeringAIProvider from "@/components/EngineeringAIProvider";
+import FreeVoiceAIWidget from "@/components/FreeVoiceAIWidget";
 
 export default function Home() {
   return (
-    <EngineeringAIProvider>
     <main
       id="main"
       style={{ background: "#090807", color: "#f0ede8", position: "relative", overflow: "hidden" }}
@@ -14,7 +12,7 @@ export default function Home() {
       <section style={{ position: "relative", height: "100vh", minHeight: 620 }}>
         <ApexWorld />
       </section>
-      <ElevenLabsVoiceWidget />
+      <FreeVoiceAIWidget />
       <a
         href="https://github.com/nextedgeaccesssolutions-ra/neas-apex"
         target="_blank"
@@ -30,6 +28,5 @@ export default function Home() {
         View on GitHub ↗
       </a>
     </main>
-    </EngineeringAIProvider>
   );
 }

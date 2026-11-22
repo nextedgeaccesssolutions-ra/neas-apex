@@ -4,7 +4,7 @@ import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-sec
 
 describe("NEAS API request security", () => {
   it("accepts a same-origin browser request", () => {
-    const request = new NextRequest("https://neas.example/api/elevenlabs/token", {
+    const request = new NextRequest("https://neas.example/api/ai/chat", {
       headers: {
         host: "neas.example",
         origin: "https://neas.example",
@@ -15,7 +15,7 @@ describe("NEAS API request security", () => {
   });
 
   it("rejects a cross-origin request", () => {
-    const request = new NextRequest("https://neas.example/api/elevenlabs/token", {
+    const request = new NextRequest("https://neas.example/api/ai/chat", {
       headers: {
         host: "neas.example",
         origin: "https://attacker.example",
@@ -25,26 +25,34 @@ describe("NEAS API request security", () => {
     expect(isSameOriginBrowserRequest(request)).toBe(false);
   });
 
-  it("rejects malformed origins and requests without a host", () => {
-    const malformed = new NextRequest("https://neas.example/api/elevenlabs/token", {
+  it("rejects malformed origins, missing origins, and requests without a host", () => {
+    const malformed = new NextRequest("https://neas.example/api/ai/chat", {
       headers: { host: "neas.example", origin: "not-a-url" },
     });
-    const missingHost = new NextRequest("https://neas.example/api/elevenlabs/token", {
+    const missingOrigin = new NextRequest("https://neas.example/api/ai/chat", {
+      headers: { host: "neas.example", "sec-fetch-site": "same-origin" },
+    });
+    const missingHost = new NextRequest("https://neas.example/api/ai/chat", {
       headers: { origin: "https://neas.example" },
     });
     expect(isSameOriginBrowserRequest(malformed)).toBe(false);
+    expect(isSameOriginBrowserRequest(missingOrigin)).toBe(false);
     expect(isSameOriginBrowserRequest(missingHost)).toBe(false);
   });
 
   it("enforces a per-client window and resets after expiry", () => {
-    const request = new NextRequest("https://neas.example/api/elevenlabs/token", {
-      headers: { host: "neas.example", "x-forwarded-for": "198.51.100.41" },
+    const request = new NextRequest("https://neas.example/api/ai/chat", {
+      headers: {
+        host: "neas.example",
+        origin: "https://neas.example",
+        "x-forwarded-for": "198.51.100.41",
+      },
     });
-    expect(consumeRateLimit(request, "test-voice", 2, 1_000, 10_000).allowed).toBe(true);
-    expect(consumeRateLimit(request, "test-voice", 2, 1_000, 10_100).allowed).toBe(true);
-    const blocked = consumeRateLimit(request, "test-voice", 2, 1_000, 10_200);
+    expect(consumeRateLimit(request, "test-ai-chat", 2, 1_000, 10_000).allowed).toBe(true);
+    expect(consumeRateLimit(request, "test-ai-chat", 2, 1_000, 10_100).allowed).toBe(true);
+    const blocked = consumeRateLimit(request, "test-ai-chat", 2, 1_000, 10_200);
     expect(blocked.allowed).toBe(false);
     expect(blocked.retryAfterSeconds).toBeGreaterThan(0);
-    expect(consumeRateLimit(request, "test-voice", 2, 1_000, 11_100).allowed).toBe(true);
+    expect(consumeRateLimit(request, "test-ai-chat", 2, 1_000, 11_100).allowed).toBe(true);
   });
 });
