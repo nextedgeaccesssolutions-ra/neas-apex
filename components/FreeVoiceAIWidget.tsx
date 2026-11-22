@@ -33,7 +33,7 @@ const panelStyle: CSSProperties = {
   backdropFilter: "blur(18px)", overflow: "hidden",
 };
 
-function speak(text: string) {
+function speak(text: string, onStart: () => void, onEnd: () => void) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
@@ -44,7 +44,7 @@ function speak(text: string) {
   utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith("en-us"))
     || voices.find((voice) => voice.lang.toLowerCase().startsWith("en"))
     || null;
-  window.speechSynthesis.speak(utterance);
+  utterance.onstart = onStart;\n  utterance.onend = onEnd;\n  utterance.onerror = onEnd;\n  window.speechSynthesis.speak(utterance);
 }
 
 export default function FreeVoiceAIWidget() {
@@ -114,7 +114,7 @@ export default function FreeVoiceAIWidget() {
       if (!response.ok || !data.reply) throw new Error(data.error || "NEAS AI is temporarily unavailable.");
       const reply = data.reply.trim();
       setMessages((current) => [...current, { id: `assistant:${Date.now()}`, role: "assistant", text: reply }]);
-      if (voiceEnabledRef.current) speak(reply);
+      if (voiceEnabledRef.current) speak(reply, () => setSpeaking(true), () => setSpeaking(false));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to reach the free AI service.");
     } finally {
