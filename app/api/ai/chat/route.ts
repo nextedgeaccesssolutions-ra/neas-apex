@@ -29,6 +29,29 @@ const SPECIALIST_GUIDANCE = {
 } as const;
 type SpecialistId = keyof typeof SPECIALIST_GUIDANCE;
 
+const SPECIALIST_LABELS: Record<SpecialistId, string> = {
+  auto: "NEAS AI Coordinator",
+  engineering: "NEAS Engineering Agent",
+  projects: "NEAS Project Controls Agent",
+  safety: "NEAS HSE & Safety Agent",
+  commercial: "NEAS Commercial Agent",
+  renewables: "NEAS Renewable Energy Agent",
+  "rope-access": "NEAS Rope Access Agent",
+  "business-development": "NEAS Business Development Agent",
+};
+
+function routeSpecialist(text: string): Exclude<SpecialistId, "auto"> {
+  const value = text.toLowerCase();
+  const has = (...terms: string[]) => terms.some((term) => value.includes(term));
+  if (has("rope access", "irata", "rigging", "anchor point", "anchor bolt", "suspended access", "rope rescue")) return "rope-access";
+  if (has("risk assessment", "jsa", "jha", "method statement", "permit to work", "work at height", "confined space", "hse", "safety", "rescue plan")) return "safety";
+  if (has("wind turbine", "wind farm", "solar", "renewable", "met mast", "blade inspection", "blade repair", "lidar", "photovoltaic")) return "renewables";
+  if (has("boq", "quotation", "quote", "pricing", "costing", "budget", "invoice", "procurement", "payment terms", "cash flow", "margin")) return "commercial";
+  if (has("proposal", "lead", "client", "sales", "business development", "opportunity", "follow up", "tender")) return "business-development";
+  if (has("schedule", "project plan", "milestone", "progress", "resource plan", "work breakdown", "wbs", "project status")) return "projects";
+  return "engineering";
+}
+
 function deny(error: string, status: number) {
   return NextResponse.json({ error }, {
     status,
@@ -79,6 +102,7 @@ export async function POST(request: NextRequest) {
   const last = messages[messages.length - 1];
   if (last.role !== "user") return deny("The latest message must be from the user.", 400);
 
+  const resolvedSpecialist: SpecialistId = specialist === "auto" ? (payload.audio ? "auto" : routeSpecialist(last.text)) : specialist;
   const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [{ text: last.text }];
   if (payload.image !== undefined) {
     if (!payload.image || typeof payload.image !== "object") return deny("Invalid image attachment.", 400);
@@ -119,7 +143,9 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nActive specialist mode: ${SPECIALIST_GUIDANCE[specialist]}` }] },
+          system_instruction: { parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nActive specialist agent: ${SPECIALIST_LABELS[resolvedSpecialist]}.
+
+Specialist operating instructions: ${SPECIALIST_GUIDANCE[resolvedSpecialist]}` }] },
           contents,
           generationConfig: { temperature: 0.35, maxOutputTokens: 1200 },
         }),
@@ -145,7 +171,7 @@ export async function POST(request: NextRequest) {
       .trim();
     if (!reply) return deny("The AI service returned an empty response. Please retry.", 502);
 
-    return NextResponse.json({ reply, model: MODEL, specialist }, {
+    return NextResponse.json({ reply, model: MODEL, specialist: resolvedSpecialist, agent: SPECIALIST_LABELS[resolvedSpecialist] }, {
       headers: { "Cache-Control": "no-store, max-age=0", "X-Content-Type-Options": "nosniff" },
     });
   } catch {
