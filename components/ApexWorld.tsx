@@ -240,22 +240,13 @@ export default function ApexWorld() {
 
   // A tap cycles idle → thinking → speaking → idle. That state drives the
   // backdrop, the light-cast and the reasoning web's activity level.
-  const [showState, setShowState] = useState<OrbState>("idle");
-  const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showState] = useState<OrbState>("idle");
   const voiceState: OrbState | null = conversationStatus === "connecting"
     ? "thinking"
     : conversationStatus === "connected"
       ? isSpeaking ? "speaking" : isProcessing ? "thinking" : isListening ? "listening" : "thinking"
       : null;
   const orbState: OrbState = voiceState ?? showState;
-
-  const boost = () => {
-    const next: OrbState = showState === "idle" ? "thinking" : showState === "thinking" ? "speaking" : "idle";
-    setShowState(next);
-    if (showTimer.current) clearTimeout(showTimer.current);
-    showTimer.current = setTimeout(() => setShowState("idle"), 8000);
-  };
-  useEffect(() => () => { if (showTimer.current) clearTimeout(showTimer.current); }, []);
 
   useEffect(() => {
     const handleProcessing = (event: Event) => {
