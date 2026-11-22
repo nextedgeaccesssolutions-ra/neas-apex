@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   const last = messages[messages.length - 1];
   if (last.role !== "user") return deny("The latest message must be from the user.", 400);
 
-  const parts: Array<Record<string, unknown>> = [{ text: last.text }];
+  const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [{ text: last.text }];
   if (payload.image !== undefined) {
     if (!payload.image || typeof payload.image !== "object") return deny("Invalid image attachment.", 400);
     const image = payload.image as Partial<ImageInput>;
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     parts.push({ inline_data: { mime_type: image.mimeType, data: image.data } });
   }
 
-  const contents = messages.slice(0, -1).map((message) => ({
+  const contents: Array<{ role: "user" | "model"; parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> }> = messages.slice(0, -1).map((message) => ({
     role: message.role === "assistant" ? "model" : "user",
     parts: [{ text: message.text }],
   }));
