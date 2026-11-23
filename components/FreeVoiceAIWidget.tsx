@@ -387,8 +387,8 @@ export default function FreeVoiceAIWidget() {
   }, [listening, pending, sendMessage, startRecordingFallback]);
   startListeningRef.current = startListening;
 
-  // Start microphone recognition inside the real tap gesture. Starting it
-  // only after speechSynthesis.onend can lose browser user activation.
+  // Start the ElevenLabs conversation synchronously from the user's tap so
+  // the browser can grant microphone permission within the active gesture.
   const startCore = useCallback(() => {
     if (elevenLabsActiveRef.current) {
       setExpanded(true);
@@ -550,7 +550,6 @@ export default function FreeVoiceAIWidget() {
             {recording && !elevenLabsReady && <button type="button" onClick={() => mediaRecorderRef.current?.stop()} style={{ border: "1px solid rgba(248,113,113,.45)", color: "#fca5a5", background: "transparent", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP RECORDING</button>}
             {!voiceEnabled && <button type="button" onClick={enableVoiceOutput} style={{ border: "1px solid rgba(202,147,50,.35)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>{elevenLabsReady ? "START ELEVENLABS VOICE" : "ENABLE DEVICE VOICE"}</button>}
             {voiceEnabled && <button type="button" onClick={stopVoice} style={{ border: "1px solid rgba(202,147,50,.35)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>VOICE OFF</button>}
-            <button type="button" onClick={stopVoice} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP VOICE</button>
             <button type="button" onClick={() => fileRef.current?.click()} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>ATTACH IMAGE</button>
             <button type="button" onClick={() => { stopVoice(); setMessages([]); setInput(""); setPhoto(null); setError(""); }} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>NEW CHAT</button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) { if (file.size > 3 * 1024 * 1024) setError("Images must be 3 MB or smaller."); else setPhoto(file); } event.currentTarget.value = ""; }} />
