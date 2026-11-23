@@ -1,8 +1,8 @@
 name: NEAS APEX auto-fix and health watch
 
-# Mechanical auto-fixes (formatting only — never logic) on PRs, plus hard
-# verification gates (tests, typecheck, build) and a scheduled production
-# probe that files/updates a single rolling issue with evidence.
+# Read-only formatting checks on PRs, blocking verification gates (tests,
+# typecheck, build), and a scheduled production probe that files/updates one
+# rolling issue with evidence.
 #
 # What this does NOT do: rewrite application logic, touch secrets, promote
 # deployments, or mark agents active. Those stay human-gated.
@@ -71,6 +71,7 @@ jobs:
           if (result.error) throw result.error;
           process.exit(result.status ?? 1);
           NODE
+
   verify:
     name: Tests, typecheck, build (blocking gates)
     if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -129,7 +130,8 @@ jobs:
           echo "health_status=${HCODE} body=${HBODY}"
           if [ "${HCODE}" != "200" ]; then note "FAIL health expected=200 got=${HCODE} body=${HBODY}"; fi
 
-          # 3. Homepage must still embed the ElevenLabs widget marker.
+          # 3. Homepage must server-render its accessible voice widget landmark.
+          # The ElevenLabs custom element is mounted after client hydration.
           if ! curl -fsSL "${PROD_URL}/" | grep -q 'aria-label="NEAS AI Core voice conversation"'; then
             note "FAIL homepage missing server-rendered NEAS voice widget landmark"
           fi
