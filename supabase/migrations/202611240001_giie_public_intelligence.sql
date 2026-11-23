@@ -62,9 +62,7 @@ create table if not exists public.giie_discoveries (
   search_document tsvector generated always as (
     setweight(to_tsvector('english'::regconfig, coalesce(title,'')), 'A') ||
     setweight(to_tsvector('english'::regconfig, coalesce(core_concept,'')), 'A') ||
-    setweight(to_tsvector('english'::regconfig, coalesce(lawful_summary,'')), 'B') ||
-    setweight(to_tsvector('english'::regconfig, array_to_string(subjects, ' ')), 'B') ||
-    setweight(to_tsvector('english'::regconfig, array_to_string(industries, ' ')), 'C')
+    setweight(to_tsvector('english'::regconfig, coalesce(lawful_summary,'')), 'B')
   ) stored,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
