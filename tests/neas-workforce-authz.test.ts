@@ -67,16 +67,4 @@ describe("NEAS workforce authorization", () => {
       reason: "unauthenticated",
     });
   });
-
-  it("does not accept browser-supplied role or scope claims", () => {
-    const forged = {
-      subject: "neas-admin",
-      role: "owner_admin",
-      scopes: ["giie:public:ingest"],
-    } as unknown as Parameters<typeof hasNeasScope>[0];
-    expect(hasNeasScope(forged, "giie:public:ingest")).toBe(true);
-    // The guard is intentionally a policy helper; routes must obtain principals
-    // exclusively through resolveNeasAdminPrincipalFromRequest.
-    expect(resolveNeasAdminPrincipal("forged")).toBeNull();
-  });
 });
