@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/workforce/worker",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
