@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
 import { buildNeasSystemPolicy } from "@/lib/neas-ai-governance";
+import { NEAS_RUNTIME_SPECIALISTS, routeNeasRuntimeSpecialist, type NeasRuntimeSpecialistId } from "@/lib/neas-specialist-runtime";
+
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +28,11 @@ const SYSTEM_INSTRUCTION = [
 type Message = { role: "user" | "assistant"; text: string };
 type ImageInput = { mimeType: string; data: string };
 type AudioInput = { mimeType: string; data: string };
-import { NEAS_RUNTIME_SPECIALISTS, routeNeasRuntimeSpecialist, type NeasRuntimeSpecialistId } from "@/lib/neas-specialist-runtime";
+type SpecialistId = "auto" | NeasRuntimeSpecialistId;
+const SPECIALIST_LABELS: Record<SpecialistId, string> = {
+  auto: "NEAS AI Coordinator",
+  ...Object.fromEntries(Object.entries(NEAS_RUNTIME_SPECIALISTS).map(([id, specialist]) => [id, specialist.label])),
+} as Record<SpecialistId, string>;
 
 function deny(error: string, status: number) {
   return NextResponse.json({ error }, {
