@@ -85,3 +85,19 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - The live probe is disabled unless `NEAS_LIVE_MODEL_VALIDATION_ENABLED=true`; a POST also requires explicit `confirmSpend: true`, uses a 24-token synthetic prompt, a 5–30 second timeout, a one-per-10-minute process-local throttle, and durable audit records.
 - The GET endpoint reports configured route metadata and auth mode only. It does not call a model and does not claim live validation.
 - No live inference request was made by this implementation; no model spend or secrets were used. A successful probe would validate connectivity only, not specialist quality, fallback behavior, tool execution, or production capacity.
+
+### GIIE source governance and guarded ingestion — implementation branch
+
+- Added an owner-session source registry API: `GET/POST/PATCH /api/admin/giie/sources`.
+- New sources are always registered disabled. Enabling requires an explicit owner review note, terms review, robots-policy review, and a positive per-hour quota. Source changes create durable AIW audit events.
+- GIIE search and ingest endpoints support either a valid server-to-server connector token or the signed NEAS administrator session with the matching GIIE scope. Their exact routes are allowlisted; unlisted API paths remain default-deny.
+- Ingestion requires an enabled, terms-reviewed and robots-reviewed registry entry whose normalized URL and source type match. It applies an hourly database-count quota check, preserves duplicate discoveries, and keeps GIIE data in the public knowledge space.
+- Discovery validation rejects malformed objects, unsupported source/evidence/status values, oversized text, invalid dates, credentials in source URLs, malformed arrays, and invalid confidence values.
+- Removed stale ElevenLabs API paths from the proxy allowlist because no corresponding route exists in this repository. The website voice bridge uses the official ElevenLabs web component instead.
+
+### Remaining GIIE activation blockers
+
+- The connected Supabase project still has 0 enabled GIIE sources, 0 discoveries, and 0 research jobs. The new registry API does not auto-enable sources.
+- `GIIE_PUBLIC_SEARCH_ENABLED` and `GIIE_INGESTION_ENABLED` remain disabled; no Brave API key, connector token, or embedding provider was tested or changed.
+- The source quota check is count-based and not transactionally atomic under concurrent ingestion. A database-side atomic quota guard is required before high-volume scheduling.
+- No embeddings are generated; semantic retrieval is not live.
