@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
 import { buildNeasSystemPolicy } from "@/lib/neas-ai-governance";
+import { NEAS_RUNTIME_SPECIALISTS, routeNeasRuntimeSpecialist, type NeasRuntimeSpecialistId } from "@/lib/neas-specialist-runtime";
+
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,40 +28,11 @@ const SYSTEM_INSTRUCTION = [
 type Message = { role: "user" | "assistant"; text: string };
 type ImageInput = { mimeType: string; data: string };
 type AudioInput = { mimeType: string; data: string };
-const SPECIALIST_GUIDANCE = {
-  auto: "Determine the best discipline from the user's request. State the discipline being applied when it materially affects the answer. Ask one focused question if routing is ambiguous.",
-  engineering: "Act as the engineering specialist. Focus on technical calculations, inspection evidence, engineering assumptions, design interfaces, standards verification, and competent-person review. Never certify or approve engineering work.",
-  projects: "Act as the project controls specialist. Focus on scope, work breakdown, schedule, resources, dependencies, progress, risks, deliverables, and change control. Distinguish estimates from committed dates.",
-  safety: "Act as the HSE specialist. Focus on hazard identification, risk assessment, controls, permits, emergency readiness, work-at-height safeguards, and verification. Do not authorize site work or replace the appointed competent HSE person.",
-  commercial: "Act as the commercial and procurement specialist. Focus on BOQ, cost breakdowns, pricing assumptions, cash flow, payment terms, procurement specifications, supplier comparison, and contract risks. State currency and tax assumptions.",
-  renewables: "Act as the renewable energy specialist. Focus on wind, solar, met mast, turbine blades, balance of plant, grid interfaces, resource data, access, inspection, and project feasibility. Identify data gaps and applicable engineering review.",
-  "rope-access": "Act as the rope access specialist. Focus on access strategy, work positioning, anchor information, rigging documentation, team competence, equipment inspection, rescue planning, exclusion zones, and operational interfaces. Never invent anchor capacities or certify a rigging plan.",
-  "business-development": "Act as the NEAS business development specialist. Focus on opportunity qualification, client needs, project pipeline, proposal strategy, differentiators, follow-up planning, and commercial next steps. Never claim that outreach or commitments occurred unless confirmed.",
-} as const;
-type SpecialistId = keyof typeof SPECIALIST_GUIDANCE;
-
+type SpecialistId = "auto" | NeasRuntimeSpecialistId;
 const SPECIALIST_LABELS: Record<SpecialistId, string> = {
   auto: "NEAS AI Coordinator",
-  engineering: "NEAS Engineering Agent",
-  projects: "NEAS Project Controls Agent",
-  safety: "NEAS HSE & Safety Agent",
-  commercial: "NEAS Commercial Agent",
-  renewables: "NEAS Renewable Energy Agent",
-  "rope-access": "NEAS Rope Access Agent",
-  "business-development": "NEAS Business Development Agent",
-};
-
-function routeSpecialist(text: string): Exclude<SpecialistId, "auto"> {
-  const value = text.toLowerCase();
-  const has = (...terms: string[]) => terms.some((term) => value.includes(term));
-  if (has("rope access", "irata", "rigging", "anchor point", "anchor bolt", "suspended access", "rope rescue")) return "rope-access";
-  if (has("risk assessment", "jsa", "jha", "method statement", "permit to work", "work at height", "confined space", "hse", "safety", "rescue plan")) return "safety";
-  if (has("wind turbine", "wind farm", "solar", "renewable", "met mast", "blade inspection", "blade repair", "lidar", "photovoltaic")) return "renewables";
-  if (has("boq", "quotation", "quote", "pricing", "costing", "budget", "invoice", "procurement", "payment terms", "cash flow", "margin")) return "commercial";
-  if (has("proposal", "lead", "client", "sales", "business development", "opportunity", "follow up", "tender")) return "business-development";
-  if (has("schedule", "project plan", "milestone", "progress", "resource plan", "work breakdown", "wbs", "project status")) return "projects";
-  return "engineering";
-}
+  ...Object.fromEntries(Object.entries(NEAS_RUNTIME_SPECIALISTS).map(([id, specialist]) => [id, specialist.label])),
+} as Record<SpecialistId, string>;
 
 function deny(error: string, status: number) {
   return NextResponse.json({ error }, {
@@ -86,7 +59,7 @@ export async function POST(request: NextRequest) {
 
   let specialist: SpecialistId = "auto";
   if (payload.specialist !== undefined) {
-    if (typeof payload.specialist !== "string" || !Object.hasOwn(SPECIALIST_GUIDANCE, payload.specialist)) {
+    if (typeof payload.specialist !== "string" || !(payload.specialist === "auto" || Object.hasOwn(NEAS_RUNTIME_SPECIALISTS, payload.specialist))) {
       return deny("Unknown NEAS specialist mode.", 400);
     }
     specialist = payload.specialist as SpecialistId;
@@ -111,7 +84,7 @@ export async function POST(request: NextRequest) {
   const last = messages[messages.length - 1];
   if (last.role !== "user") return deny("The latest message must be from the user.", 400);
 
-  const resolvedSpecialist: SpecialistId = specialist === "auto" ? (payload.audio ? "auto" : routeSpecialist(last.text)) : specialist;
+  const resolvedSpecialist: SpecialistId = specialist === "auto" ? (payload.audio ? "engineering" : routeNeasRuntimeSpecialist(last.text)) : specialist;
   const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [{ text: last.text }];
   if (payload.image !== undefined) {
     if (!payload.image || typeof payload.image !== "object") return deny("Invalid image attachment.", 400);
@@ -157,7 +130,7 @@ export async function POST(request: NextRequest) {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION + "\n\nActive specialist agent: " + SPECIALIST_LABELS[resolvedSpecialist] + ".\n\nSpecialist operating instructions: " + SPECIALIST_GUIDANCE[resolvedSpecialist] }] },
+            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION + "\n\nActive specialist agent: " + SPECIALIST_LABELS[resolvedSpecialist] + ".\n\nSpecialist operating instructions: " + NEAS_RUNTIME_SPECIALISTS[resolvedSpecialist].guidance }] },
             contents,
             generationConfig: { maxOutputTokens: 700 },
           }),

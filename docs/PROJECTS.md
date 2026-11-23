@@ -1,13 +1,13 @@
 # NEAS APEX — Project Board
 
-Last updated: 2026-11-22
+Last updated: 2026-11-24
 
 ## Active work
 
 | Project | State | Scope | Next gate |
 |---|---|---|---|
 | NEAS APEX holographic voice avatar | Voice-motion integration implemented on preview branch; live smoke test pending | Supplied portrait in the gold core; browser-native speech recognition/recording, browser speech synthesis, real conversation-state events, tappable core activation, breathing/eye effects and speaking waveform. No ElevenLabs dependency in this path. | CI and live microphone/speech smoke test; router/workforce prerequisites remain separate. |
-| NEAS Universal AI Router + specialist workforce | Blocked — configuration required | Shared OpenRouter-first model routing, provider health/fallback, budget controls, and approved specialist tools. | Configure server-side OPENROUTER_API_KEY and deploy authenticated router/chat endpoints; publish the specialist tool/API contracts and explicit tool allowlist. |
+| NEAS Universal AI Router + specialist workforce | Implementation branch opened; 12-domain chat routing added, live model/runtime validation still blocked on provider credentials and production smoke tests | Twelve specialist instruction profiles are now registered in the Gemini chat route; this remains deterministic prompt routing, not 12 independently deployed agents. | Add runtime orchestration, provider health checks, approved tool contracts, authenticated task queue, persistent audit, and validate model credentials in production. |
 
 ## Completed in this change
 
