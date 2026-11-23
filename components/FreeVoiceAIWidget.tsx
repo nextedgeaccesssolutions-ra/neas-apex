@@ -153,7 +153,7 @@ export default function FreeVoiceAIWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           specialist,
-          messages: nextMessages.slice(-12).map(({ role, text: messageText }) => ({ role, text: messageText })),
+          messages: nextMessages.slice(-6).map(({ role, text: messageText }) => ({ role, text: messageText })),
           ...(image ? { image } : {}),
           ...(audio ? { audio } : {}),
         }),
