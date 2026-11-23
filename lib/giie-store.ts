@@ -36,6 +36,7 @@ async function supabaseRequest<T>(
   path: string,
   method: "GET" | "POST" | "PATCH",
   body?: unknown,
+  prefer?: string,
 ): Promise<T> {
   const { baseUrl, serviceKey } = supabaseConfig();
   const response = await fetch(new URL("rest/v1/" + path, baseUrl + "/"), {
@@ -45,7 +46,7 @@ async function supabaseRequest<T>(
       Authorization: "Bearer " + serviceKey,
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...(method !== "GET" ? { Prefer: "return=representation" } : {}),
+      ...(method !== "GET" ? { Prefer: prefer ?? "return=representation" } : {}),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     cache: "no-store",
@@ -181,7 +182,7 @@ export async function persistPublicDiscovery(discovery: GiieDiscovery): Promise<
 
   const normalizedUrl = normalizeSourceUrl(discovery.sourceUrl);
   const sourceParams = new URLSearchParams({
-    select: "id,source_type,quota_per_hour",
+    select: "id,source_name,source_type,quota_per_hour",
     source_url: "eq." + normalizedUrl,
     enabled: "eq.true",
     terms_reviewed: "eq.true",
@@ -194,6 +195,16 @@ export async function persistPublicDiscovery(discovery: GiieDiscovery): Promise<
   );
   const source = approvedSources[0];
   if (!source) throw new Error("GIIE source is not registered and approved for ingestion.");
+  const existingParams = new URLSearchParams({
+    select: "id",
+    normalized_url: "eq." + normalizedUrl,
+    limit: "1",
+  });
+  const existing = await supabaseRequest<Array<{ id: string }>>(
+    "giie_discoveries?" + existingParams.toString(),
+    "GET",
+  );
+  if (existing[0]) return { inserted: false, id: existing[0].id };
   if (source.source_type !== discovery.sourceType) throw new Error("GIIE discovery source type does not match its approved source registry entry.");
   if (!Number.isInteger(source.quota_per_hour) || source.quota_per_hour < 1) {
     throw new Error("GIIE source ingestion quota is not configured.");
@@ -203,7 +214,7 @@ export async function persistPublicDiscovery(discovery: GiieDiscovery): Promise<
   const quotaParams = new URLSearchParams({
     select: "id",
     source_id: "eq." + source.id,
-    discovered_at: "gte." + since,
+    created_at: "gte." + since,
     limit: String(Math.min(source.quota_per_hour + 1, 1001)),
   });
   const recent = await supabaseRequest<Array<{ id: string }>>("giie_discoveries?" + quotaParams.toString(), "GET");
@@ -216,7 +227,7 @@ export async function persistPublicDiscovery(discovery: GiieDiscovery): Promise<
     normalized_url: normalizedUrl,
     content_fingerprint: null,
     title: discovery.title,
-    source_name: discovery.sourceName,
+    source_name: source.source_name,
     source_type: discovery.sourceType,
     published_at: discovery.publishedAt ?? null,
     discovered_at: discovery.discoveredAt,
@@ -243,19 +254,13 @@ export async function persistPublicDiscovery(discovery: GiieDiscovery): Promise<
     "giie_discoveries?" + params.toString(),
     "POST",
     row,
+    "resolution=ignore-duplicates,return=representation",
   );
-  // PostgREST's default insert behavior conflicts on duplicates; the store uses
-  // a second lookup to return a stable idempotent result without silently replacing data.
   if (result.length) return { inserted: true, id: result[0].id };
 
-  const existingParams = new URLSearchParams({
-    select: "id",
-    normalized_url: "eq." + normalizedUrl,
-    limit: "1",
-  });
-  const existing = await supabaseRequest<Array<{ id: string }>>(
+  const duplicate = await supabaseRequest<Array<{ id: string }>>(
     "giie_discoveries?" + existingParams.toString(),
     "GET",
   );
-  return { inserted: false, id: existing[0]?.id };
+  return { inserted: false, id: duplicate[0]?.id };
 }
