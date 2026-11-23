@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { consumeRateLimit } from "@/lib/neas-api-security";
+import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
+import { authorizeNeasScope, resolveNeasAdminPrincipalFromRequest } from "@/lib/neas-workforce-authz";
 import { searchPublicWeb } from "@/lib/giie-connectors";
 
 export const runtime = "nodejs";
@@ -26,7 +27,13 @@ export async function POST(request: NextRequest) {
   if (process.env.GIIE_PUBLIC_SEARCH_ENABLED !== "true") {
     return jsonError("GIIE public search is disabled. An administrator must explicitly enable it.", 503);
   }
-  if (!hasValidConnectorToken(request)) return jsonError("Unauthorized GIIE connector request.", 401);
+  const connectorAuthorized = hasValidConnectorToken(request);
+  if (!connectorAuthorized) {
+    if (!isSameOriginBrowserRequest(request)) return jsonError("Request not permitted.", 403);
+    const principal = resolveNeasAdminPrincipalFromRequest(request);
+    if (!principal) return jsonError("Authentication required.", 401);
+    if (!authorizeNeasScope(principal, "giie:public:search").allowed) return jsonError("Insufficient GIIE search permissions.", 403);
+  }
 
   const rate = consumeRateLimit(request, "neas-giie-public-search", 10, 10 * 60 * 1000);
   if (!rate.allowed) return jsonError("GIIE search rate limit reached. Please wait and retry.", 429);
