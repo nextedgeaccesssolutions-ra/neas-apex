@@ -144,17 +144,90 @@ export interface GiieOpportunityAssessment {
 
 export function validatePublicDiscovery(input: GiieDiscovery): string[] {
   const errors: string[] = [];
-  if (input.knowledgeSpace !== "public-global-intelligence") errors.push("Public discoveries must remain in the public-global-intelligence knowledge space.");
-  try {
-    const url = new URL(input.sourceUrl);
-    if (url.protocol !== "https:" && url.protocol !== "http:") errors.push("Source URL must use HTTP or HTTPS.");
-  } catch { errors.push("A valid original source URL is required."); }
-  if (!input.title.trim()) errors.push("Discovery title is required.");
-  if (!input.sourceName.trim()) errors.push("Source name is required.");
-  if (!input.lawfulSummary.trim()) errors.push("A lawful, attributed summary is required.");
-  if (!Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1) errors.push("Confidence must be between 0 and 1.");
-  if (input.publishedAt && Number.isNaN(Date.parse(input.publishedAt))) errors.push("publishedAt must be a valid date.");
-  if (input.discoveredAt && Number.isNaN(Date.parse(input.discoveredAt))) errors.push("discoveredAt must be a valid date.");
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return ["Discovery payload must be an object."];
+  }
+
+  const sourceTypes: readonly string[] = [
+    "official-api", "rss", "public-webpage", "government", "standards-organization",
+    "peer-reviewed-journal", "academic-repository", "patent-database", "open-source-repository",
+    "public-tender-portal", "industry-publication", "public-forum", "public-video",
+  ];
+  const evidenceClasses: readonly string[] = [
+    "verified-official", "peer-reviewed-research", "credible-secondary",
+    "industry-opinion", "unverified-claim", "ai-generated-hypothesis",
+  ];
+  const statuses: readonly string[] = [
+    "discovered", "extracted", "classified", "verification-pending", "verified", "contradicted", "archived",
+  ];
+  const requiredText = (value: unknown, field: string, max: number) => {
+    if (typeof value !== "string" || !value.trim()) errors.push(field + " is required.");
+    else if (value.trim().length > max) errors.push(field + " exceeds the " + max + " character limit.");
+  };
+  const optionalText = (value: unknown, field: string, max: number) => {
+    if (value !== undefined && value !== null && (typeof value !== "string" || value.length > max)) {
+      errors.push(field + " must be text of at most " + max + " characters.");
+    }
+  };
+  const stringArray = (value: unknown, field: string, maxItems: number, maxItemLength: number, required = true) => {
+    if (value === undefined && !required) return;
+    if (!Array.isArray(value) || value.length > maxItems || value.some((item) => typeof item !== "string" || !item.trim() || item.length > maxItemLength)) {
+      errors.push(field + " must be an array of up to " + maxItems + " non-empty text values.");
+    }
+  };
+
+  if (input.knowledgeSpace !== "public-global-intelligence") {
+    errors.push("Public discoveries must remain in the public-global-intelligence knowledge space.");
+  }
+
+  if (typeof input.sourceUrl !== "string") {
+    errors.push("A valid original source URL is required.");
+  } else {
+    try {
+      const url = new URL(input.sourceUrl);
+      if (url.protocol !== "https:" && url.protocol !== "http:") errors.push("Source URL must use HTTP or HTTPS.");
+      if (url.username || url.password) errors.push("Source URL must not contain credentials.");
+      if (input.sourceUrl.length > 2_000) errors.push("Source URL exceeds the 2000 character limit.");
+    } catch {
+      errors.push("A valid original source URL is required.");
+    }
+  }
+
+  requiredText(input.title, "Discovery title", 500);
+  requiredText(input.sourceName, "Source name", 200);
+  requiredText(input.coreConcept, "Core concept", 1_000);
+  requiredText(input.lawfulSummary, "Lawful summary", 8_000);
+  if (!sourceTypes.includes(input.sourceType)) errors.push("Unsupported GIIE source type.");
+  if (!evidenceClasses.includes(input.evidenceClass)) errors.push("Unsupported GIIE evidence class.");
+  if (!statuses.includes(input.status)) errors.push("Unsupported GIIE discovery status.");
+
+  stringArray(input.subjects, "Subjects", 50, 120);
+  stringArray(input.industries, "Industries", 30, 120);
+  stringArray(input.relatedDiscoveryIds, "Related discovery IDs", 100, 128);
+  stringArray(input.corroboratingSourceUrls, "Corroborating source URLs", 30, 2_000);
+  stringArray(input.contradictionNotes, "Contradiction notes", 30, 1_000);
+  stringArray(input.technology, "Technology", 30, 120, false);
+  stringArray(input.geography, "Geography", 30, 120, false);
+
+  optionalText(input.authorOrOrganization, "Author or organization", 200);
+  optionalText(input.problem, "Problem", 2_000);
+  optionalText(input.proposedSolution, "Proposed solution", 2_000);
+  optionalText(input.sourceExcerpt, "Source excerpt", 2_000);
+  optionalText(input.copyrightOrLicenseNotes, "Copyright or license notes", 1_000);
+
+  if (!Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1) {
+    errors.push("Confidence must be between 0 and 1.");
+  }
+  if (typeof input.discoveredAt !== "string" || Number.isNaN(Date.parse(input.discoveredAt))) {
+    errors.push("discoveredAt must be a valid date.");
+  }
+  if (input.publishedAt !== undefined && (typeof input.publishedAt !== "string" || Number.isNaN(Date.parse(input.publishedAt)))) {
+    errors.push("publishedAt must be a valid date.");
+  }
+  if (input.freshnessDays !== undefined && (!Number.isInteger(input.freshnessDays) || input.freshnessDays < 0)) {
+    errors.push("freshnessDays must be a non-negative integer.");
+  }
+
   return errors;
 }
 
