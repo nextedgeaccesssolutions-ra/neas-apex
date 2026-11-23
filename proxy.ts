@@ -1,5 +1,5 @@
 import { NextResponse,type NextRequest } from "next/server";
-const PUBLIC_API_PATHS=new Set(["/api/weather","/api/ai/chat","/api/elevenlabs/token","/api/elevenlabs/signed-url","/api/admin/login","/api/admin/session","/api/admin/logout","/api/admin/workforce/tasks","/api/admin/models/probe"]);
+const PUBLIC_API_PATHS=new Set(["/api/weather","/api/ai/chat","/api/admin/login","/api/admin/session","/api/admin/logout","/api/admin/workforce/tasks","/api/admin/models/probe","/api/admin/giie/sources","/api/giie/search","/api/giie/ingest"]);
 export function proxy(request:NextRequest) {
  const {pathname}=request.nextUrl;
  // Keep the admin UI closed until each page is connected to session authorization.
