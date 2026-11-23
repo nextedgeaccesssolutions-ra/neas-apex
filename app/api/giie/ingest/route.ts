@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { consumeRateLimit } from "@/lib/neas-api-security";
+import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
+import { authorizeNeasScope, resolveNeasAdminPrincipalFromRequest } from "@/lib/neas-workforce-authz";
 import { persistPublicDiscovery } from "@/lib/giie-store";
 import type { GiieDiscovery } from "@/lib/neas-giie";
 
@@ -25,13 +26,22 @@ function hasValidConnectorToken(request: NextRequest): boolean {
 
 export async function POST(request: NextRequest) {
   if (process.env.GIIE_INGESTION_ENABLED !== "true") return jsonError("GIIE ingestion is disabled.", 503);
-  if (!hasValidConnectorToken(request)) return jsonError("Unauthorized GIIE ingestion request.", 401);
+  const connectorAuthorized = hasValidConnectorToken(request);
+  if (!connectorAuthorized) {
+    if (!isSameOriginBrowserRequest(request)) return jsonError("Request not permitted.", 403);
+    const principal = resolveNeasAdminPrincipalFromRequest(request);
+    if (!principal) return jsonError("Authentication required.", 401);
+    if (!authorizeNeasScope(principal, "giie:public:ingest").allowed) return jsonError("Insufficient GIIE ingestion permissions.", 403);
+  }
   const rate = consumeRateLimit(request, "neas-giie-ingest", 30, 10 * 60 * 1000);
   if (!rate.allowed) return jsonError("GIIE ingestion rate limit reached.", 429);
 
   let discovery: GiieDiscovery;
-  try { discovery = await request.json() as GiieDiscovery; }
-  catch { return jsonError("Invalid discovery JSON.", 400); }
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 16_384) return jsonError("GIIE discovery request is too large.", 413);
+    discovery = JSON.parse(raw) as GiieDiscovery;
+  } catch { return jsonError("Invalid discovery JSON.", 400); }
 
   try {
     const result = await persistPublicDiscovery(discovery);
@@ -41,7 +51,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "GIIE ingestion failed.";
-    const status = /Invalid GIIE discovery|Only public|Source URL/.test(message) ? 400
+    const status = /not registered and approved|not approved for ingestion/.test(message) ? 403
+      : /hourly ingestion quota/.test(message) ? 429
+      : /Invalid GIIE discovery|Only public|Source URL|does not match/.test(message) ? 400
       : /not configured|schema is not installed/.test(message) ? 503 : 502;
     return jsonError(message, status);
   }
