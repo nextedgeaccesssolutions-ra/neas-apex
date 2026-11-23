@@ -47,6 +47,35 @@ describe("NEAS GIIE governance and intelligence primitives", () => {
     expect(validatePublicDiscovery({ ...discovery, sourceUrl: "javascript:alert(1)", confidence: 1.5 }).length).toBeGreaterThan(0);
   });
 
+  it("rejects malformed discovery payloads without throwing", () => {
+    expect(validatePublicDiscovery(null as unknown as GiieDiscovery)).toContain("Discovery payload must be an object.");
+    const malformed = {
+      ...discovery,
+      title: undefined,
+      sourceName: 42,
+      subjects: "wind",
+      industries: [""],
+      sourceType: "unknown",
+      confidence: Number.NaN,
+    } as unknown as GiieDiscovery;
+    const errors = validatePublicDiscovery(malformed);
+    expect(errors).toContain("Discovery title is required.");
+    expect(errors).toContain("Source name is required.");
+    expect(errors).toContain("Subjects must be an array of up to 50 non-empty text values.");
+    expect(errors).toContain("Unsupported GIIE source type.");
+    expect(errors).toContain("Confidence must be between 0 and 1.");
+  });
+
+  it("rejects credential-bearing source URLs and invalid required dates", () => {
+    const errors = validatePublicDiscovery({
+      ...discovery,
+      sourceUrl: "https://user:pass@example.org/feed",
+      discoveredAt: "not-a-date",
+    });
+    expect(errors).toContain("Source URL must not contain credentials.");
+    expect(errors).toContain("discoveredAt must be a valid date.");
+  });
+
   it("classifies evidence without promoting unverified claims", () => {
     expect(classifyEvidence({ officialPrimarySource: true, verified: true })).toBe("verified-official");
     expect(classifyEvidence({ peerReviewed: true })).toBe("peer-reviewed-research");
