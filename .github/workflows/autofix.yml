@@ -18,26 +18,27 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  issues: write
+  contents: read
 
 concurrency:
   group: neas-autofix-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  safe-fix:
-    name: Formatting-only autofix (PRs)
+  format-check:
+    name: Formatting check (read-only PR validation)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Checkout PR head
         uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          # GITHUB_TOKEN with contents:write can push back to same-repo PR branches.
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Changed files
         id: changed
@@ -51,26 +52,25 @@ jobs:
             const names = files
               .map((f) => f.filename)
               .filter((n) => /\.(ts|tsx|js|jsx|json|css|md)$/.test(n));
-            core.setOutput('list', names.join(' '));
+            core.setOutput('files_json', JSON.stringify(names));
             core.setOutput('count', String(names.length));
 
-      - name: Prettier write (formatting only)
+      - name: Prettier check (read-only; no PR-branch writes)
         if: steps.changed.outputs.count != '0'
-        run: npx --yes prettier@3 --write ${{ steps.changed.outputs.list }}
-
-      - name: Push formatting fixes to PR branch
-        if: steps.changed.outputs.count != '0'
+        env:
+          CHANGED_FILES_JSON: ${{ steps.changed.outputs.files_json }}
         run: |
-          if git diff --quiet; then
-            echo "No formatting changes."
-            exit 0
-          fi
-          git config user.name "neas-autofix[bot]"
-          git config user.email "neas-autofix[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "style: prettier autofix (mechanical formatting only)"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-
+          node <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const files = JSON.parse(process.env.CHANGED_FILES_JSON || '[]');
+          if (!Array.isArray(files) || files.some((file) => typeof file !== 'string' || !file)) {
+            throw new Error('Invalid changed-file list');
+          }
+          if (files.length === 0) process.exit(0);
+          const result = spawnSync('npx', ['--yes', 'prettier@3', '--check', '--', ...files], { stdio: 'inherit' });
+          if (result.error) throw result.error;
+          process.exit(result.status ?? 1);
+          NODE
   verify:
     name: Tests, typecheck, build (blocking gates)
     if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -103,8 +103,11 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
     env:
-      PROD_URL: "https://neas-apex.vercel.app"
+      PROD_URL: "https://neas-apex-nextedgeaccesssolutions-neas.vercel.app"
       WORKER_PATH: "/api/internal/workforce/worker"
     steps:
       - name: Probe production endpoints
@@ -124,11 +127,11 @@ jobs:
           HCODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "${PROD_URL}/api/health" || echo "000")
           HBODY=$(head -c 300 /tmp/health.json 2>/dev/null || true)
           echo "health_status=${HCODE} body=${HBODY}"
-          if [ "${HCODE}" != "200" ]; then note "INFO health expected=200 got=${HCODE} body=${HBODY} (ok if fix not yet deployed)"; fi
+          if [ "${HCODE}" != "200" ]; then note "FAIL health expected=200 got=${HCODE} body=${HBODY}"; fi
 
           # 3. Homepage must still embed the ElevenLabs widget marker.
-          if ! curl -sL "${PROD_URL}/" | grep -q "elevenlabs-convai"; then
-            note "FAIL homepage missing elevenlabs-convai marker"
+          if ! curl -fsSL "${PROD_URL}/" | grep -q 'aria-label="NEAS AI Core voice conversation"'; then
+            note "FAIL homepage missing server-rendered NEAS voice widget landmark"
           fi
 
           echo "summary=${FAILS:-all-green}" >> "$GITHUB_OUTPUT"
@@ -150,9 +153,9 @@ jobs:
           - Evidence: ${SUMMARY}
           - Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           Next: do NOT mark agents active. Inspect worker logs, lease table, and deployment alias before any promotion."
-          EXISTING=$(gh issue list --state open --search "${TITLE} in:title" --json number --jq '.[0].number' || true)
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "${TITLE} in:title" --json number --jq '.[0].number' || true)
           if [ -n "${EXISTING}" ]; then
-            gh issue comment "${EXISTING}" --body "${BODY}"
+            gh issue comment "${EXISTING}" --repo "$GITHUB_REPOSITORY" --body "${BODY}"
           else
-            gh issue create --title "${TITLE}" --body "${BODY}" --label "automation"
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "${TITLE}" --body "${BODY}" --label "automation"
           fi
