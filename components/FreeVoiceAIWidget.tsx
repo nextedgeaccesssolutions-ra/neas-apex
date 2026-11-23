@@ -67,7 +67,7 @@ function speak(text: string, onStart: () => void, onEnd: () => void, onError: (m
 }
 
 export default function FreeVoiceAIWidget() {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -270,6 +270,30 @@ export default function FreeVoiceAIWidget() {
     }
   }, [listening, pending, sendMessage, startRecordingFallback]);
 
+  // One deliberate tap unlocks browser audio, plays the welcome, then requests
+  // microphone access and starts listening. Replies are spoken automatically.
+  const startCore = useCallback(() => {
+    setExpanded(true);
+    setError("");
+    voiceEnabledRef.current = true;
+    setVoiceEnabled(true);
+    const welcome = "Welcome to NextEdge Access Solutions. I am NEAS AI Core, your intelligent business and engineering assistant. I can help with rope access, renewable energy, offshore and onshore operations, power plants, project delivery, safety, commercial proposals, and business development. I am ready. Please tell me how I can help.";
+    const started = speak(
+      welcome,
+      () => {
+        setSpeaking(true);
+        window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } }));
+      },
+      () => {
+        setSpeaking(false);
+        window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+        startListening();
+      },
+      (message) => setError(message),
+    );
+    if (!started) startListening();
+  }, [startListening]);
+
   const stopVoice = useCallback(() => {
     voiceEnabledRef.current = false;
     setVoiceEnabled(false);
@@ -330,14 +354,22 @@ export default function FreeVoiceAIWidget() {
   const statusText = pending ? "THINKING" : recording ? "RECORDING" : listening ? "LISTENING" : speaking ? "SPEAKING" : voiceEnabled ? "VOICE READY" : "STANDBY";
 
   return (
-    <section style={panelStyle} aria-label="NEAS free AI conversation">
+    <section style={panelStyle} aria-label="NEAS AI Core voice conversation">
+      <style>{`
+        .neas-ai-core-launch { position:relative; isolation:isolate; overflow:hidden; animation:neasCorePulse 2.8s ease-in-out infinite; box-shadow:0 0 0 0 rgba(235,192,126,.42),0 0 18px rgba(202,147,50,.2); transition:transform .2s ease,box-shadow .2s ease; }
+        .neas-ai-core-launch::after { content:""; position:absolute; inset:-40% auto -40% -55%; width:38%; transform:skewX(-22deg); background:rgba(255,255,255,.42); animation:neasCoreSweep 3.6s ease-in-out infinite; pointer-events:none; }
+        .neas-ai-core-launch:hover { transform:translateY(-1px) scale(1.025); box-shadow:0 0 24px rgba(235,192,126,.42); }
+        @keyframes neasCorePulse { 0%,100% { box-shadow:0 0 0 0 rgba(235,192,126,.24),0 0 14px rgba(202,147,50,.16); } 50% { box-shadow:0 0 0 7px rgba(235,192,126,0),0 0 24px rgba(202,147,50,.32); } }
+        @keyframes neasCoreSweep { 0%,35% { left:-55%; } 75%,100% { left:135%; } }
+        @media (prefers-reduced-motion: reduce) { .neas-ai-core-launch,.neas-ai-core-launch::after { animation:none!important; } }
+      `}</style>
       <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid rgba(202,147,50,.2)", background: "linear-gradient(100deg,rgba(202,147,50,.12),rgba(7,29,41,.1))" }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 10, letterSpacing: ".18em", color: "#EBC07E", fontWeight: 800 }}>NEAS ENGINEERING AI</div>
           <div style={{ fontSize: 9, color: "rgba(245,242,234,.52)", marginTop: 3 }}>Specialist agents · Browser voice · Text & image</div>
         </div>
         <span aria-live="polite" style={{ fontSize: 8, letterSpacing: ".12em", color: error ? "#fca5a5" : listening ? "#86efac" : "#EBC07E" }}>{error ? "ERROR" : statusText}</span>
-        <button type="button" onClick={() => setExpanded((value) => !value)} aria-label={expanded ? "Collapse NEAS AI panel" : "Expand NEAS AI panel"} style={{ border: "1px solid rgba(202,147,50,.32)", background: "rgba(7,29,41,.72)", color: "#EBC07E", borderRadius: 8, padding: "6px 8px", cursor: "pointer" }}>{expanded ? "−" : "+"}</button>
+        <button type="button" onClick={() => expanded ? setExpanded(false) : startCore()} aria-label={expanded ? "Collapse NEAS AI panel" : "Start NEAS AI Core with voice welcome"} className="neas-ai-core-launch" style={{ border: "1px solid rgba(202,147,50,.55)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 999, padding: expanded ? "7px 11px" : "9px 15px", cursor: "pointer", fontSize: 9, fontWeight: 900, letterSpacing: ".12em", whiteSpace: "nowrap" }}>{expanded ? "CLOSE" : "✦ TAP TO START"}</button>
       </header>
       {expanded && (
         <div style={{ padding: 12, display: "grid", gap: 10 }}>
