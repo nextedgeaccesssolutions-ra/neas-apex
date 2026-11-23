@@ -217,6 +217,7 @@ export async function POST(request: NextRequest) {
 
     const needsApproval = decision.disposition === "await_human_approval";
     const category = getNeasApprovalCategory(operation);
+    if (needsApproval && !category) return jsonError("No approval category is configured for this operation.", 403);
     const initialStatus = getNeasTaskInitialStatus(decision);
     // No authenticated worker/claim endpoint is deployed yet. Never infer readiness
     // from a feature flag or database status alone.
