@@ -144,64 +144,55 @@ export async function POST(request: NextRequest) {
   contents.push({ role: "user", parts });
 
   try {
-    type GeminiResult = {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      error?: { message?: string; status?: string };
-    };
-    let result: GeminiResult = {};
+    type GeminiError = { error?: { message?: string; status?: string } };
     let response: Response | null = null;
-    let activeModel = MODEL_CANDIDATES[0];
 
     for (let index = 0; index < MODEL_CANDIDATES.length; index += 1) {
       const model = MODEL_CANDIDATES[index];
       const candidateResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":streamGenerateContent?alt=sse",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nActive specialist agent: ${SPECIALIST_LABELS[resolvedSpecialist]}.
-
-Specialist operating instructions: ${SPECIALIST_GUIDANCE[resolvedSpecialist]}` }] },
+            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION + "\n\nActive specialist agent: " + SPECIALIST_LABELS[resolvedSpecialist] + ".\n\nSpecialist operating instructions: " + SPECIALIST_GUIDANCE[resolvedSpecialist] }] },
             contents,
             generationConfig: { maxOutputTokens: 700 },
           }),
           cache: "no-store",
-          signal: AbortSignal.timeout(25_000),
+          signal: AbortSignal.timeout(45_000),
         },
       );
 
-      const candidateResult = await candidateResponse.json().catch(() => ({})) as GeminiResult;
       if (!candidateResponse.ok) {
-        const providerMessage = candidateResult.error?.message || "";
-        const modelUnavailable = candidateResponse.status === 404
-          || candidateResult.error?.status === "NOT_FOUND"
-          || /model.{0,80}(not found|does not exist|unsupported)/i.test(providerMessage);
-        if (modelUnavailable && index < MODEL_CANDIDATES.length - 1) continue;
-        if (candidateResponse.status === 429) return deny("Gemini quota is temporarily exhausted. Please try again later.", 429);
-        if (modelUnavailable) return deny("No configured Gemini model is currently available to this API key. Set GEMINI_MODEL to a supported model in Vercel.", 502);
+        const failure = await candidateResponse.json().catch(() => ({})) as GeminiError;
+        const message = failure.error?.message || "";
+        const unavailable = candidateResponse.status === 404
+          || failure.error?.status === "NOT_FOUND"
+          || /model.{0,80}(not found|does not exist|unsupported)/i.test(message);
+        if (unavailable && index < MODEL_CANDIDATES.length - 1) continue;
+        if (candidateResponse.status === 429) return deny("AI capacity is temporarily busy. Please try again shortly.", 429);
+        if (unavailable) return deny("No supported fast Gemini model is available to this API key. Configure GEMINI_FAST_MODEL in Vercel.", 502);
         if (candidateResponse.status === 400) return deny("The AI service rejected this request. Check the message or attachment and retry.", 400);
-        return deny("The Gemini AI service is temporarily unavailable.", 502);
+        return deny("The NEAS AI service is temporarily unavailable.", 502);
       }
-
       response = candidateResponse;
-      result = candidateResult;
-      activeModel = model;
       break;
     }
 
-    if (!response) return deny("No supported Gemini model responded. Check the GEMINI_MODEL setting and API-key model access.", 502);
-
-    const reply = result.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text || "")
-      .join("")
-      .trim();
-    if (!reply) return deny("The AI service returned an empty response. Please retry.", 502);
-
-    return NextResponse.json({ reply, model: activeModel, specialist: resolvedSpecialist, agent: SPECIALIST_LABELS[resolvedSpecialist] }, {
-      headers: { "Cache-Control": "no-store, max-age=0", "X-Content-Type-Options": "nosniff" },
+    if (!response?.body) return deny("The AI service did not open a response stream. Please retry.", 502);
+    return new Response(response.body, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+        "X-NEAS-Agent": SPECIALIST_LABELS[resolvedSpecialist],
+        "X-NEAS-Specialist": resolvedSpecialist,
+      },
     });
   } catch {
-    return deny("Unable to reach the free AI service. Please retry.", 502);
+    return deny("Unable to reach the NEAS AI service. Please retry.", 502);
   }
 }
