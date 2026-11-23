@@ -32,7 +32,9 @@ describe("NEAS privileged runtime readiness gate", () => {
   });
 
   it("blocks unverified and incomplete capabilities", () => {
-    const evidence = completeEvidence().filter((item) => item.capability !== "specialist-execution");
+    const evidence = completeEvidence().filter((item) =>
+      item.capability !== "specialist-execution" && item.capability !== "model-live-validation",
+    );
     evidence.push({
       capability: "model-live-validation",
       verified: false,
