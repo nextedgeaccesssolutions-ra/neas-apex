@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
+import { buildNeasSystemPolicy } from "@/lib/neas-ai-governance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ const MODEL_CANDIDATES = [...new Set([
   "gemini-3.5-flash",
 ].filter((value): value is string => Boolean(value)))];
 const SYSTEM_INSTRUCTION = [
+  buildNeasSystemPolicy(),
   "You are NEAS Engineering AI for NextEdge Access Solutions.",
   "Support rope access, renewable energy, offshore and onshore operations, wind and solar, power plants, industrial inspection, project planning, commercial proposals, BOQ and costing.",
   "Be professional, precise, practical, and concise. Lead with the answer, use short paragraphs or bullets, and avoid repeating the question. Ask only for essential missing information; never invent facts.",
