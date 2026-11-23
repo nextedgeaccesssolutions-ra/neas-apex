@@ -88,6 +88,7 @@ export default function FreeVoiceAIWidget() {
   const fallbackAfterRecognitionRef = useRef(false);
   const greetingActiveRef = useRef(false);
   const restartAfterGreetingRef = useRef(false);
+  const startListeningRef = useRef<() => void>(() => {});
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -206,6 +207,11 @@ export default function FreeVoiceAIWidget() {
       busyRef.current = false;
       setPending(false);
       window.dispatchEvent(new CustomEvent("neas-ai-processing", { detail: { processing: false } }));
+      // Keep the one-tap voice session armed after each answer, including browsers
+      // that terminate a continuous SpeechRecognition session between turns.
+      if (voiceEnabledRef.current && !recognitionRef.current && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
+        window.setTimeout(() => { if (voiceEnabledRef.current && !recognitionRef.current && !busyRef.current) startListeningRef.current(); }, 180);
+      }
     }
   }, [messages]);
 
@@ -264,14 +270,28 @@ export default function FreeVoiceAIWidget() {
     const recognition = new Recognition();
     recognition.lang = "en-US";
     recognition.interimResults = true;
-    recognition.continuous = false;
+    // Keep the microphone session open across turns so users can speak again
+    // without tapping the core a second time.
+    recognition.continuous = true;
     recognition.onresult = (event) => {
       let transcript = "";
+      let interimTranscript = "";
       for (let index = event.resultIndex; index < event.results.length; index += 1) {
         const result = event.results[index];
         if (result.isFinal) transcript += result[0].transcript;
+        else interimTranscript += result[0].transcript;
       }
-      if (transcript.trim() && !greetingActiveRef.current) void sendMessage(transcript);
+      // Barge-in: as soon as the browser detects the client's voice, stop the
+      // current greeting/answer so the client is never forced to talk over NEAS.
+      if (interimTranscript.trim() || transcript.trim()) {
+        greetingActiveRef.current = false;
+        if (window.speechSynthesis?.speaking) {
+          window.speechSynthesis.cancel();
+          setSpeaking(false);
+          window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+        }
+      }
+      if (transcript.trim()) void sendMessage(transcript);
     };
     recognition.onerror = (event) => {
       setListening(false);
@@ -299,6 +319,14 @@ export default function FreeVoiceAIWidget() {
       if (fallbackAfterRecognitionRef.current && !busyRef.current) {
         fallbackAfterRecognitionRef.current = false;
         void startRecordingFallback();
+        return;
+      }
+      // Some browsers close SpeechRecognition after silence or a network blip.
+      // Re-arm it automatically while the user-enabled voice session is active.
+      if (voiceEnabledRef.current && !busyRef.current) {
+        window.setTimeout(() => {
+          if (voiceEnabledRef.current && !recognitionRef.current && !busyRef.current) startListeningRef.current();
+        }, 250);
       }
     };
     recognitionRef.current = recognition;
@@ -312,6 +340,7 @@ export default function FreeVoiceAIWidget() {
       setError("The microphone could not start. Please try again.");
     }
   }, [listening, pending, sendMessage, startRecordingFallback]);
+  startListeningRef.current = startListening;
 
   // Start microphone recognition inside the real tap gesture. Starting it
   // only after speechSynthesis.onend can lose browser user activation.
