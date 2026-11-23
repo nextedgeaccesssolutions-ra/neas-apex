@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { validatePublicDiscovery, type GiieDiscovery, type GiieSourceType } from "./neas-giie";
 
 export interface GiiePersistResult {
@@ -75,7 +76,8 @@ export function validateGiieSourceRegistration(input: {
   const normalizedUrl = normalizeSourceUrl(input.sourceUrl);
   const parsed = new URL(normalizedUrl);
   if (parsed.protocol !== "https:") throw new Error("GIIE sources must use HTTPS.");
-  if (parsed.hostname === "localhost" || parsed.hostname.endsWith(".local") || /^\d+(?:\.\d+){3}$/.test(parsed.hostname)) {
+  const host = parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal") || isIP(host) !== 0) {
     throw new Error("Local and IP-address GIIE sources are not permitted.");
   }
   const sourceTypes: readonly string[] = [
