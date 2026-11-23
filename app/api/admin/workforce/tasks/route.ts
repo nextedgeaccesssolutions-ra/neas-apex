@@ -103,6 +103,7 @@ function validIdempotencyKey(value: unknown): value is string {
 
 export async function GET(request: NextRequest) {
   const principal = resolveNeasAdminPrincipalFromRequest(request);
+  if (!principal) return jsonError("Authentication required.", 401);
   const authorization = authorizeNeasScope(principal, "workforce:tasks:read");
   if (!authorization.allowed) return jsonError("Authentication required.", 401);
 
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
   if (!isSameOriginBrowserRequest(request)) return jsonError("Request not permitted.", 403);
 
   const principal = resolveNeasAdminPrincipalFromRequest(request);
+  if (!principal) return jsonError("Authentication required.", 401);
   const authorization = authorizeNeasScope(principal, "workforce:tasks:submit");
   if (!authorization.allowed) return jsonError("Authentication required.", 401);
 
