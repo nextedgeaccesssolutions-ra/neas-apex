@@ -1,50 +1,26 @@
-name: NEAS dependency automerge (patch only)
+name: NEAS dependency review (human approval required)
 
-# Merges Dependabot PATCH updates automatically, and only after the blocking
-# verify gates (tests, typecheck, build in ci.yml) succeed on the PR.
-# Minor and major updates are intentionally left for human review:
-# minors can change behavior, majors can break the worker's security boundary.
+# Dependency updates are never auto-merged. Every update requires an
+# independent human reviewer and the normal six-gate release process.
 
 on:
-  pull_request:
-    branches: ["main"]
   pull_request_target:
-    types: [synchronize]
+    types: [opened, reopened]
     branches: ["main"]
-  workflow_dispatch:
-    inputs:
-      pr:
-        description: "PR number to evaluate for patch automerge"
-        required: false
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
 
 jobs:
-  automerge-patch:
-    if: github.actor == 'dependabot[bot]'
+  request-independent-review:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - name: Check update type
-        id: meta
-        uses: dependabot/fetch-metadata@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable squash auto-merge for patch updates only
-        if: steps.meta.outputs.update-type == 'version-update:semver-patch'
-        run: gh pr merge --auto --squash "$PR_URL"
+      - name: Require independent human review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-
-      - name: Leave minors and majors for human review
-        if: steps.meta.outputs.update-type != 'version-update:semver-patch'
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          echo "Update type is ${{ steps.meta.outputs.update-type }} — leaving for human review."
-          gh pr comment "$PR_URL" --body "NEAS automerge: this is a \`${{ steps.meta.outputs.update-type }}\` update, so it needs human review. Patch updates merge automatically once CI is green." || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "NEAS release policy: dependency updates are not auto-merged. Assign an independent human reviewer and verify the complete CI, TypeScript, dependency/security, production-build and Vercel preview gates, plus repository branch protection, before any manual merge."
