@@ -46,7 +46,7 @@ async function db<T>(path: string, method: "GET" | "POST" | "PATCH", body?: unkn
       Authorization: "Bearer " + c.key,
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...(method !== "GET" ? { Prefer: "return=representation" } : {}),
+      ...(method !== "GET" ? { Prefer: "return=representation, resolution=merge-duplicates" } : {}),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     cache: "no-store",
