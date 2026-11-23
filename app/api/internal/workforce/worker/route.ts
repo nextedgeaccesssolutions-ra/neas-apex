@@ -60,12 +60,13 @@ async function db<T>(path: string, method: "GET" | "POST" | "PATCH", body?: unkn
   return response.status === 204 ? [] as T : await response.json() as T;
 }
 
-async function recoverExpiredLeases(): Promise<number> {
+async function recoverExpiredLeases(): Promise<{ recovered: number; failed: number }> {
   const expiredBefore = new Date(Date.now() - 1_000).toISOString();
   const query = "aiw_tasks?status=eq.running&worker_lease_expires_at=lt." + encodeURIComponent(expiredBefore)
     + "&select=id,attempt_count,max_attempts,worker_lease_token&order=worker_lease_expires_at.asc&limit=1";
   const expired = await db<ExpiredTask[]>(query, "GET");
   let recovered = 0;
+  let failed = 0;
 
   for (const task of expired) {
     if (!task.worker_lease_token) continue;
@@ -88,7 +89,8 @@ async function recoverExpiredLeases(): Promise<number> {
       updated_at: new Date().toISOString(),
     });
     if (!updated.length) continue;
-    recovered += 1;
+    if (exhausted) failed += 1;
+    else recovered += 1;
     await db("aiw_task_events", "POST", {
       task_id: task.id,
       event_type: exhausted ? "task_failed_lease_exhausted" : "task_requeued_after_lease_expiry",
@@ -100,7 +102,7 @@ async function recoverExpiredLeases(): Promise<number> {
       payload: { attempt_count: task.attempt_count, max_attempts: task.max_attempts },
     });
   }
-  return recovered;
+  return { recovered, failed };
 }
 
 async function generateDraft(task: ClaimedTask): Promise<{ text: string; model: string }> {
@@ -165,7 +167,7 @@ export async function GET(request: NextRequest) {
   if (suppliedBytes.length !== expectedBytes.length || !timingSafeEqual(suppliedBytes, expectedBytes)) return unauthorized();
 
   try {
-    const recovered = await recoverExpiredLeases();
+    const leaseRecovery = await recoverExpiredLeases();
     // One inference per scheduled invocation fits the 25-second provider timeout
     // inside the serverless budget and avoids acquiring more work than we can finish.
     const claimed = await db<ClaimedTask[]>("rpc/neas_claim_workforce_tasks", "POST", { p_worker_id: WORKER_ID, p_limit: 1 });
@@ -195,7 +197,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const failed = results.some((result) => result.status !== "completed");
+    const failed = leaseRecovery.failed > 0 || results.some((result) => result.status !== "completed");
     await db("aiw_worker_heartbeats?on_conflict=worker_id", "POST", {
       worker_id: WORKER_ID,
       status: failed ? "degraded" : "healthy",
@@ -203,12 +205,13 @@ export async function GET(request: NextRequest) {
       last_task_id: claimed.at(-1)?.task_id ?? null,
       metadata: {
         claimed: claimed.length,
-        recovered,
+        recovered: leaseRecovery.recovered,
+        failed_recovered: leaseRecovery.failed,
         completed: results.filter((result) => result.status === "completed").length,
         failed: results.filter((result) => result.status !== "completed").length,
       },
     }).catch(() => null);
-    return NextResponse.json({ worker: WORKER_ID, recovered, claimed: claimed.length, results }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ worker: WORKER_ID, recovered: leaseRecovery.recovered, failedRecovered: leaseRecovery.failed, claimed: claimed.length, results }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Workforce worker could not claim or process tasks." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
