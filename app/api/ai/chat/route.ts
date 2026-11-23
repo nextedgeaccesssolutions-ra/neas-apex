@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
 import { buildNeasSystemPolicy } from "@/lib/neas-ai-governance";
+import { buildNeasSpecialistSystemInstruction } from "@/lib/neas-specialist-prompt";
 import { NEAS_RUNTIME_SPECIALISTS, routeNeasRuntimeSpecialist, type NeasRuntimeSpecialistId } from "@/lib/neas-specialist-runtime";
 import { buildNeasRegistrySkillInstruction, loadNeasRegisteredSkills } from "@/lib/neas-skill-registry";
 
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // Prefer the low-latency Flash-Lite model; retain configured and stronger fallbacks.
 const MODEL_CANDIDATES = [...new Set([
@@ -128,20 +130,33 @@ export async function POST(request: NextRequest) {
 
     for (let index = 0; index < MODEL_CANDIDATES.length; index += 1) {
       const model = MODEL_CANDIDATES[index];
-      const candidateResponse = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":streamGenerateContent?alt=sse",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION + "\n\nActive specialist agent: " + SPECIALIST_LABELS[resolvedSpecialist] + ".\n\nSpecialist operating instructions: " + NEAS_RUNTIME_SPECIALISTS[resolvedSpecialist].guidance + (registeredSkillInstruction ? "\n\n" + registeredSkillInstruction : "") }] },
-            contents,
-            generationConfig: { maxOutputTokens: 700 },
-          }),
-          cache: "no-store",
-          signal: AbortSignal.timeout(45_000),
-        },
-      );
+      const specialistSystemInstruction = buildNeasSpecialistSystemInstruction(SYSTEM_INSTRUCTION, {
+        specialistId: resolvedSpecialist,
+        label: SPECIALIST_LABELS[resolvedSpecialist],
+        guidance: NEAS_RUNTIME_SPECIALISTS[resolvedSpecialist].guidance,
+        registeredSkills: registeredSkillInstruction,
+      });
+      const connectionController = new AbortController();
+      const connectionTimeout = setTimeout(() => connectionController.abort(), 25_000);
+      let candidateResponse: Response;
+      try {
+        candidateResponse = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":streamGenerateContent?alt=sse",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: specialistSystemInstruction }] },
+              contents,
+              generationConfig: { maxOutputTokens: 700 },
+            }),
+            cache: "no-store",
+            signal: connectionController.signal,
+          },
+        );
+      } finally {
+        clearTimeout(connectionTimeout);
+      }
 
       if (!candidateResponse.ok) {
         const failure = await candidateResponse.json().catch(() => ({})) as GeminiError;
