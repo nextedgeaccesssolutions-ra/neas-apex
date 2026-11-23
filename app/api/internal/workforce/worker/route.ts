@@ -94,7 +94,7 @@ async function recoverExpiredLeases(): Promise<{ recovered: number; failed: numb
     await db("aiw_task_events", "POST", {
       task_id: task.id,
       event_type: exhausted ? "task_failed_lease_exhausted" : "task_requeued_after_lease_expiry",
-      actor_type: "worker",
+      actor_type: "system",
       actor_id: WORKER_ID,
       message: exhausted
         ? "The task exhausted its retry budget after an expired worker lease."
