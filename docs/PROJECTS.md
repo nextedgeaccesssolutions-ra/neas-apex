@@ -46,3 +46,12 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - Task acceptance is fail-closed unless an authenticated principal, durable audit capability, idempotency key, and scoped tool grant are present.
 - Safety/engineering approval and arbitrary shell, filesystem, or unrestricted network operations remain denied even when a human approval flag is supplied.
 - This policy is not a worker, queue, database, authentication provider, or audit implementation. No API endpoint has been exposed and no task is being executed by this change.
+
+
+### Workforce authorization foundation — PR #54
+
+- Added `lib/neas-workforce-authz.ts` to derive the current single administrator principal from the verified signed session cookie and expose typed scope checks for server route handlers.
+- Added regression tests for missing/forged sessions, principal derivation, fixed cookie lookup, and unauthenticated denial.
+- This is not yet route integration, multi-user RBAC, durable identity management, or workforce activation. Admin pages and privileged APIs remain closed until each route is individually guarded and reviewed.
+- PR: https://github.com/nextedgeaccesssolutions-ra/neas-apex/pull/54
+- CI and independent review are pending; do not treat this foundation as production authorization evidence.
