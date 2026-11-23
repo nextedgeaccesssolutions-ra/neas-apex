@@ -345,6 +345,12 @@ export default function FreeVoiceAIWidget() {
   // Start microphone recognition inside the real tap gesture. Starting it
   // only after speechSynthesis.onend can lose browser user activation.
   const startCore = useCallback(() => {
+    // The central orb and the panel CTA share this single voice-session owner.
+    // Ignore duplicate start events while a session is already active.
+    if (voiceEnabledRef.current) {
+      setExpanded(true);
+      return;
+    }
     setExpanded(true);
     setError("");
     voiceEnabledRef.current = true;
@@ -404,7 +410,9 @@ export default function FreeVoiceAIWidget() {
   }, []);
 
   useEffect(() => {
-    const onStart = () => startListening();
+    // The central NEAS AI CORE orb must start the complete one-tap experience:
+    // microphone + greeting + spoken replies. Do not create a second listener.
+    const onStart = () => startCore();
     const onStop = () => stopVoice();
     window.addEventListener("neas-ai-start-voice", onStart);
     window.addEventListener("neas-ai-stop-voice", onStop);
@@ -412,7 +420,7 @@ export default function FreeVoiceAIWidget() {
       window.removeEventListener("neas-ai-start-voice", onStart);
       window.removeEventListener("neas-ai-stop-voice", onStop);
     };
-  }, [startListening, stopVoice]);
+  }, [startCore, stopVoice]);
 
   const enableVoiceOutput = () => {
     setError("");
