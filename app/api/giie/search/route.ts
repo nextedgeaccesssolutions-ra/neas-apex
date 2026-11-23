@@ -1,5 +1,6 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
+import { consumeRateLimit } from "@/lib/neas-api-security";
 import { searchPublicWeb } from "@/lib/giie-connectors";
 
 export const runtime = "nodejs";
@@ -12,13 +13,23 @@ function jsonError(message: string, status: number) {
   });
 }
 
+function hasValidConnectorToken(request: NextRequest): boolean {
+  const expected = process.env.GIIE_CONNECTOR_API_TOKEN?.trim();
+  const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+  if (!expected || !supplied) return false;
+  const expectedBytes = Buffer.from(expected);
+  const suppliedBytes = Buffer.from(supplied);
+  return expectedBytes.length === suppliedBytes.length && timingSafeEqual(expectedBytes, suppliedBytes);
+}
+
 export async function POST(request: NextRequest) {
-  if (!isSameOriginBrowserRequest(request)) return jsonError("This request is not permitted.", 403);
-  const rate = consumeRateLimit(request, "neas-giie-public-search", 10, 10 * 60 * 1000);
-  if (!rate.allowed) return jsonError("GIIE search rate limit reached. Please wait and retry.", 429);
   if (process.env.GIIE_PUBLIC_SEARCH_ENABLED !== "true") {
     return jsonError("GIIE public search is disabled. An administrator must explicitly enable it.", 503);
   }
+  if (!hasValidConnectorToken(request)) return jsonError("Unauthorized GIIE connector request.", 401);
+
+  const rate = consumeRateLimit(request, "neas-giie-public-search", 10, 10 * 60 * 1000);
+  if (!rate.allowed) return jsonError("GIIE search rate limit reached. Please wait and retry.", 429);
 
   let body: { query?: unknown; count?: unknown };
   try { body = await request.json() as typeof body; }
