@@ -4,16 +4,18 @@ import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-sec
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Prefer the low-latency Flash-Lite model; retain configured and stronger fallbacks.
 const MODEL_CANDIDATES = [...new Set([
+  process.env.GEMINI_FAST_MODEL?.trim(),
+  "gemini-3.5-flash-lite",
   process.env.GEMINI_MODEL?.trim(),
   "gemini-3.8-flash",
-  "gemini-3.5-flash-lite",
   "gemini-3.5-flash",
 ].filter((value): value is string => Boolean(value)))];
 const SYSTEM_INSTRUCTION = [
   "You are NEAS Engineering AI for NextEdge Access Solutions.",
   "Support rope access, renewable energy, offshore and onshore operations, wind and solar, power plants, industrial inspection, project planning, commercial proposals, BOQ and costing.",
-  "Be professional, precise, practical, and concise. Ask for missing information instead of inventing facts.",
+  "Be professional, precise, practical, and concise. Lead with the answer, use short paragraphs or bullets, and avoid repeating the question. Ask only for essential missing information; never invent facts.",
   "For engineering, lifting, rope access, work at height, electrical, confined-space, and HSE matters, distinguish general guidance from site-specific approval. Never certify a design, method, equipment, inspection, or safety control. Require review by a qualified competent person.",
   "For calculations, state units, assumptions, formulas, and limitations. Never fabricate standards or project data.",
   "When reviewing an image, describe only visible evidence and clearly state uncertainty.",
@@ -162,7 +164,7 @@ export async function POST(request: NextRequest) {
 
 Specialist operating instructions: ${SPECIALIST_GUIDANCE[resolvedSpecialist]}` }] },
             contents,
-            generationConfig: { temperature: 0.35, maxOutputTokens: 1200 },
+            generationConfig: { maxOutputTokens: 700 },
           }),
           cache: "no-store",
           signal: AbortSignal.timeout(25_000),
