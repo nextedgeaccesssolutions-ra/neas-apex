@@ -113,7 +113,7 @@ begin
   if v_agent_id is null then return false; end if;
 
   update public.aiw_agents
-     set runtime_status = 'active',
+     set runtime_status = 'idle',
          last_execution_at = now(),
          updated_at = now()
    where agent_id = v_agent_id;
