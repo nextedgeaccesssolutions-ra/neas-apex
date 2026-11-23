@@ -289,7 +289,10 @@ export default function FreeVoiceAIWidget() {
     if (Recognition) startListening();
 
     const welcome = "Welcome to NextEdge Access Solutions. I am NEAS AI Core, your intelligent business and engineering assistant. I can help with rope access, renewable energy, offshore and onshore operations, power plants, project delivery, safety, commercial proposals, and business development. I am ready. Please tell me how I can help.";
+    let welcomeFinished = false;
     const finishWelcome = () => {
+      if (welcomeFinished) return;
+      welcomeFinished = true;
       greetingActiveRef.current = false;
       setSpeaking(false);
       window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
