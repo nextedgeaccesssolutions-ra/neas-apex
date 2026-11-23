@@ -76,11 +76,20 @@ begin
       from candidates c
      where t.id = c.id
     returning t.*
+  ),
+  agent_runtime as (
+    update public.aiw_agents a
+       set runtime_status = 'running',
+           updated_at = now()
+      from claimed c
+     where a.agent_id = c.agent_id
+    returning a.agent_id
   )
   select c.id, c.worker_lease_token, c.title, c.objective, c.agent_id, c.department_code,
          c.input, a.name, a.system_prompt, a.job_description, a.skills, a.execution_mode
     from claimed c
-    join public.aiw_agents a on a.agent_id = c.agent_id;
+    join public.aiw_agents a on a.agent_id = c.agent_id
+    join agent_runtime ar on ar.agent_id = a.agent_id;
 end;
 $$;
 
