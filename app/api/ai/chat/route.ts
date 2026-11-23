@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
   try {
     type GeminiError = { error?: { message?: string; status?: string } };
     let response: Response | null = null;
+    let selectedModel: string | null = null;
 
     for (let index = 0; index < MODEL_CANDIDATES.length; index += 1) {
       const model = MODEL_CANDIDATES[index];
@@ -155,6 +156,7 @@ export async function POST(request: NextRequest) {
         return deny("The NEAS AI service is temporarily unavailable.", 502);
       }
       response = candidateResponse;
+      selectedModel = model;
       break;
     }
 
@@ -167,6 +169,8 @@ export async function POST(request: NextRequest) {
         "Connection": "keep-alive",
         "X-Accel-Buffering": "no",
         "X-NEAS-Agent": SPECIALIST_LABELS[resolvedSpecialist],
+        "X-NEAS-Model": selectedModel || "unknown",
+        "X-NEAS-Skills-Agent-ID": registeredSkillContext.agentId,
         "X-NEAS-Specialist": resolvedSpecialist,
         "X-NEAS-Skills-Source": registeredSkillContext.source,
         "X-NEAS-Skills-Loaded": String(registeredSkillContext.skills.length),
