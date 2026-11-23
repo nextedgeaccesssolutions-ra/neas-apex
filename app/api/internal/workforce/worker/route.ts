@@ -82,7 +82,7 @@ async function generateDraft(task: ClaimedTask): Promise<{ text: string; model: 
       generationConfig: { maxOutputTokens: 1200, temperature: 0.2 },
     }),
     cache: "no-store",
-    signal: AbortSignal.timeout(45_000),
+    signal: AbortSignal.timeout(25_000),
   });
   if (!response.ok) {
     const failure = await response.json().catch(() => ({})) as { error?: { message?: string } };
@@ -108,6 +108,15 @@ export async function GET(request: NextRequest) {
   if (!supplied || supplied.length !== c.cronSecret.length || supplied !== c.cronSecret) return unauthorized();
 
   try {
+    // Recover work left behind by a timed-out serverless invocation before claiming new work.
+    const expiredBefore = new Date(Date.now() - 1_000).toISOString();
+    await db("aiw_tasks?status=eq.running&worker_lease_expires_at=lt." + encodeURIComponent(expiredBefore), "PATCH", {
+      status: "queued",
+      worker_lease_token: null,
+      worker_lease_expires_at: null,
+      error_message: "Previous worker lease expired; task returned to the queue for a bounded retry.",
+      updated_at: new Date().toISOString(),
+    });
     const claimed = await db<ClaimedTask[]>("rpc/neas_claim_workforce_tasks", "POST", { p_worker_id: WORKER_ID, p_limit: 3 });
     const results: Array<{ taskId: string; status: string }> = [];
     for (const task of claimed) {
