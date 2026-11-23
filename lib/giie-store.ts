@@ -189,12 +189,13 @@ export async function persistPublicDiscovery(discovery: GiieDiscovery): Promise<
     robots_reviewed: "eq.true",
     limit: "1",
   });
-  const approvedSources = await supabaseRequest<Array<{ id: string; source_type: GiieSourceType; quota_per_hour: number }>>(
+  const approvedSources = await supabaseRequest<Array<{ id: string; source_name: string; source_type: GiieSourceType; quota_per_hour: number }>>(
     "giie_sources?" + sourceParams.toString(),
     "GET",
   );
   const source = approvedSources[0];
   if (!source) throw new Error("GIIE source is not registered and approved for ingestion.");
+  if (source.source_type !== discovery.sourceType) throw new Error("GIIE discovery source type does not match its approved source registry entry.");
   const existingParams = new URLSearchParams({
     select: "id",
     normalized_url: "eq." + normalizedUrl,
@@ -205,7 +206,6 @@ export async function persistPublicDiscovery(discovery: GiieDiscovery): Promise<
     "GET",
   );
   if (existing[0]) return { inserted: false, id: existing[0].id };
-  if (source.source_type !== discovery.sourceType) throw new Error("GIIE discovery source type does not match its approved source registry entry.");
   if (!Number.isInteger(source.quota_per_hour) || source.quota_per_hour < 1) {
     throw new Error("GIIE source ingestion quota is not configured.");
   }
