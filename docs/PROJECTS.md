@@ -77,3 +77,11 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - The mapping is explicitly limited to 12 representative profiles; it does not imply that all 90 workforce records are separate model instances. All 90 records remain `runtime_status=not_configured`; no background workers or external-action permissions are activated.
 - To use database-backed skills in deployment, configure `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`) and `SUPABASE_SERVICE_ROLE_KEY` as private server-side Vercel environment variables for the relevant environment. Never expose the service-role key to browser code or use a `NEXT_PUBLIC_` service-key variable.
 - Added unit tests for the specialist-to-agent mapping, active-skill normalization, and prompt guardrail preservation. CI and a deployed runtime probe remain pending.
+
+### AI Gateway live model validation gate — implementation branch
+
+- Added authenticated `GET/POST /api/admin/models/probe` with dedicated `models:read` and `models:validate` scopes.
+- The route reads the enabled model route from Supabase and supports Vercel AI Gateway through the installed AI SDK. It uses API-key auth when configured or Vercel OIDC in a Vercel deployment.
+- The live probe is disabled unless `NEAS_LIVE_MODEL_VALIDATION_ENABLED=true`; a POST also requires explicit `confirmSpend: true`, uses a 24-token synthetic prompt, a 5–30 second timeout, a one-per-10-minute process-local throttle, and durable audit records.
+- The GET endpoint reports configured route metadata and auth mode only. It does not call a model and does not claim live validation.
+- No live inference request was made by this implementation; no model spend or secrets were used. A successful probe would validate connectivity only, not specialist quality, fallback behavior, tool execution, or production capacity.

@@ -57,6 +57,8 @@ describe("NEAS workforce authorization", () => {
     configureSession();
     const principal = resolveNeasAdminPrincipal(createNeasAdminSessionToken() ?? undefined);
     expect(hasNeasScope(principal, "workforce:tasks:read")).toBe(true);
+    expect(hasNeasScope(principal, "models:read")).toBe(true);
+    expect(hasNeasScope(principal, "models:validate")).toBe(true);
     expect(authorizeNeasScope(principal, "audit:read")).toEqual({ allowed: true });
     expect(authorizeNeasScope(null, "audit:read")).toEqual({
       allowed: false,

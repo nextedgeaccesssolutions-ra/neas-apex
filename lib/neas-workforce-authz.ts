@@ -17,7 +17,9 @@ export type NeasWorkforceScope =
   | "workforce:agents:configure"
   | "giie:public:search"
   | "giie:public:ingest"
-  | "audit:read";
+  | "audit:read"
+  | "models:read"
+  | "models:validate";
 
 export interface NeasAuthenticatedPrincipal {
   readonly subject: "neas-admin";
@@ -51,6 +53,8 @@ export function resolveNeasAdminPrincipal(
       "giie:public:search",
       "giie:public:ingest",
       "audit:read",
+      "models:read",
+      "models:validate",
     ] as const),
   });
 }
