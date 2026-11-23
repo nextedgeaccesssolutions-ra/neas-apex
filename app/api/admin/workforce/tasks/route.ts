@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeNeasScope, resolveNeasAdminPrincipalFromRequest } from "@/lib/neas-workforce-authz";
 import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
@@ -100,10 +101,6 @@ function validIdempotencyKey(value: unknown): value is string {
     && /^[A-Za-z0-9._:-]+$/.test(value);
 }
 
-function approvalRequired(operation: NeasTaskOperation) {
-  return getNeasApprovalCategory(operation) !== null;
-}
-
 export async function GET(request: NextRequest) {
   const principal = resolveNeasAdminPrincipalFromRequest(request);
   const authorization = authorizeNeasScope(principal, "workforce:tasks:read");
@@ -142,12 +139,11 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const contentLength = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(contentLength) && contentLength > 16_384) return jsonError("Task request is too large.", 413);
-
   let body: Record<string, unknown>;
   try {
-    const parsed: unknown = await request.json();
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 16_384) return jsonError("Task request is too large.", 413);
+    const parsed: unknown = JSON.parse(rawBody);
     if (!isRecord(parsed)) return jsonError("Invalid task request.", 400);
     body = parsed;
   } catch {
@@ -220,8 +216,10 @@ export async function POST(request: NextRequest) {
     const needsApproval = decision.disposition === "await_human_approval";
     const category = getNeasApprovalCategory(operation);
     const initialStatus = getNeasTaskInitialStatus(decision);
-    const runtimeReady = agent.runtime_status === "idle" && agent.execution_mode === "execute_approved"
-      && process.env.NEAS_WORKFORCE_WORKER_ENABLED === "true";
+    // No authenticated worker/claim endpoint is deployed yet. Never infer readiness
+    // from a feature flag or database status alone.
+    const runtimeReady = false;
+    const requestId = randomUUID();
     const safeBlockReason = runtimeReady
       ? "Task accepted; worker claim is pending."
       : "Task stored safely but not executed: no verified specialist worker runtime is active.";
@@ -298,7 +296,7 @@ export async function POST(request: NextRequest) {
         requires_approval: needsApproval,
         worker_runtime_ready: runtimeReady,
       },
-      request_id: request.headers.get("x-request-id")?.slice(0, 128) ?? null,
+      request_id: requestId,
     });
 
     if (needsApproval) {
