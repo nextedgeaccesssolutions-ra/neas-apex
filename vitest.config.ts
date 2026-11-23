@@ -13,8 +13,11 @@ export default defineConfig({
   // Pages/components use the automatic JSX runtime (no `import React`), same as
   // Next builds them — without this, importing a *.tsx page throws
   // "React is not defined" under the classic runtime.
-  esbuild: {
-    jsx: 'automatic',
+  // Vite 8 uses Oxc; keep the automatic runtime on its native transform path.
+  oxc: {
+    jsx: {
+      runtime: 'automatic',
+    },
   },
   test: {
     include: ['tests/**/*.test.ts'],
