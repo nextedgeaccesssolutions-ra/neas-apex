@@ -55,3 +55,25 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - This is not yet route integration, multi-user RBAC, durable identity management, or workforce activation. Admin pages and privileged APIs remain closed until each route is individually guarded and reviewed.
 - PR: https://github.com/nextedgeaccesssolutions-ra/neas-apex/pull/54
 - CI and independent review are pending; do not treat this foundation as production authorization evidence.
+
+
+### Live AI workforce skills registry and assignment automation — 24 November 2026
+
+- Applied Supabase migration `202611240002_aiw_skills_registry_automation` to the connected live project.
+- Added a normalized, versioned catalogue of 54 active skills across the nine workforce departments, plus per-agent assignments and skill-evaluation evidence tables.
+- Backfilled 540 active assignments: six department-specific skills for each of the 90 registered agents. Each assignment carries the agent's role name, job mandate, skill-specific operating guidance, priority, and working-level proficiency label. A follow-on trigger records a `not_tested` baseline evaluation for every new assignment.
+- Enabled the `aiw_agents_auto_assign_department_skills` database trigger. New agents and department changes automatically receive the active skills for their department; the legacy `aiw_agents.skills` JSON array is synchronized for compatibility.
+- Enabled RLS on the three new registry tables. Authenticated users have read-only access; writes are reserved for the server-side service role. No service-role credential is exposed to clients.
+- Verification: 90/90 agents have six synchronized skills; 540 enabled assignments; 54 active catalogue skills; assignment trigger enabled. A baseline evaluation row exists for each assignment (540 total), all marked `not_tested` until live model tests are run.
+- Runtime boundary: all 90 agents still report `runtime_status=not_configured`. Three records (CEO, Engineering Director, HSEQ Director) have `execution_mode=execute_approved`; the remaining 87 are `draft_only`. This migration did not change those settings, activate model execution, or authorize external actions.
+- Migration sources: `supabase/migrations/202611240002_aiw_skills_registry_automation.sql` and `supabase/migrations/202611240003_aiw_skill_evaluation_automation.sql`. Implementation PR is pending review and merge.
+
+## Specialist runtime connection — implementation in PR #56
+
+- The Gemini chat route now resolves each of the 12 deterministic specialist profiles to a representative registered workforce agent and loads that agent's active skill assignments from Supabase using a server-only service-role credential.
+- The prompt receives the six assigned skill records, role-specific guidance and guardrails as supplementary context. Registry content cannot override system governance, safety rules or approval boundaries.
+- Database reads are bounded to 3 seconds and 12 skills. If the private Supabase URL/key is absent or the registry request fails, the route retains the existing deterministic specialist prompt and reports the fallback through response headers rather than failing the chat request.
+- Response diagnostics include `X-NEAS-Skills-Source` (`supabase` or `static-fallback`) and `X-NEAS-Skills-Loaded`. These headers are runtime diagnostics, not proof of agent autonomy.
+- The mapping is explicitly limited to 12 representative profiles; it does not imply that all 90 workforce records are separate model instances. All 90 records remain `runtime_status=not_configured`; no background workers or external-action permissions are activated.
+- To use database-backed skills in deployment, configure `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`) and `SUPABASE_SERVICE_ROLE_KEY` as private server-side Vercel environment variables for the relevant environment. Never expose the service-role key to browser code or use a `NEXT_PUBLIC_` service-key variable.
+- Added unit tests for the specialist-to-agent mapping, active-skill normalization, and prompt guardrail preservation. CI and a deployed runtime probe remain pending.
