@@ -221,18 +221,20 @@ export async function POST(request: NextRequest) {
     const initialStatus = getNeasTaskInitialStatus(decision);
     // No authenticated worker/claim endpoint is deployed yet. Never infer readiness
     // from a feature flag or database status alone.
-    const runtimeReady = false;
+    const runtimeReady = process.env.WORKFORCE_WORKER_ENABLED === "true"
+      && Boolean(process.env.CRON_SECRET?.trim())
+      && Boolean(process.env.GEMINI_API_KEY?.trim());
     const requestId = randomUUID();
     const safeBlockReason = runtimeReady
-      ? "Task accepted; worker claim is pending."
-      : "Task stored safely but not executed: no verified specialist worker runtime is active.";
+      ? "Task accepted; authenticated worker claim is pending."
+      : "Task stored safely but not executed: worker runtime is not enabled or its required credentials are missing.";
 
     const inserted = await supabaseRequest<TaskRow[]>("aiw_tasks", "POST", {
       title: title.trim(),
       objective: objective.trim(),
       agent_id: agent.agent_id,
       department_code: agent.department_code,
-      status: "blocked",
+      status: runtimeReady ? "queued" : "blocked",
       priority,
       input: { operation, objective: objective.trim(), requested_agent: agent.agent_id },
       idempotency_key: idempotencyKey,
@@ -270,18 +272,19 @@ export async function POST(request: NextRequest) {
 
     await supabaseRequest("aiw_task_events", "POST", {
       task_id: task.id,
-      event_type: needsApproval ? "approval_requested" : "task_blocked_runtime_unavailable",
+      event_type: needsApproval ? "approval_requested" : runtimeReady ? "task_queued_for_worker" : "task_blocked_runtime_unavailable",
       actor_type: "human",
       actor_id: principal.subject,
       message: needsApproval
         ? "Task recorded and held for explicit human approval."
-        : safeBlockReason,
+        : runtimeReady ? "Task queued for the authenticated shared worker; execution has not yet started." : safeBlockReason,
       payload: {
         operation,
         decision: decision.disposition,
         policy_reason: decision.reason,
         worker_runtime_ready: runtimeReady,
         execution_started: false,
+        worker_runtime_enabled: runtimeReady,
       },
     });
 
@@ -317,10 +320,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      task: { ...task, status: initialStatus, error_message: safeBlockReason },
+      task: { ...task, status: runtimeReady ? "queued" : initialStatus, error_message: runtimeReady ? null : safeBlockReason },
       executionStarted: false,
+      queuedForExecution: runtimeReady,
       requiresApproval: false,
-      message: safeBlockReason,
+      message: runtimeReady ? "Task queued. The authenticated worker will claim it on its next scheduled run." : safeBlockReason,
     }, { status: 202, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SupabaseRestError && error.status === 409) {
