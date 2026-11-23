@@ -72,6 +72,115 @@ export interface NeasMasterBrainPlan {
   notes: string[];
 }
 
+
+export type NeasTaskOperation =
+  | "summarize_internal"
+  | "draft_internal"
+  | "plan_tasks"
+  | "read_only_check"
+  | "giie_public_research"
+  | "send_external"
+  | "issue_quote"
+  | "commit_funds"
+  | "approve_safety"
+  | "change_production"
+  | "mutate_business_record"
+  | "commercialize_opportunity"
+  | "arbitrary_shell"
+  | "arbitrary_filesystem"
+  | "arbitrary_network";
+
+export type NeasTaskDisposition =
+  | "queue_preapproved"
+  | "await_human_approval"
+  | "deny";
+
+export interface NeasTaskExecutionDecision {
+  disposition: NeasTaskDisposition;
+  operation: NeasTaskOperation;
+  requiresAuthenticatedPrincipal: true;
+  requiresDurableAudit: true;
+  requiresIdempotencyKey: true;
+  requiresScopedToolGrant: true;
+  requiresHumanApproval: boolean;
+  reason: string;
+}
+
+const TASK_OPERATION_POLICY: Record<NeasTaskOperation, {
+  disposition: NeasTaskDisposition;
+  reason: string;
+}> = {
+  summarize_internal: { disposition: "queue_preapproved", reason: "Read-only analysis of owner-approved internal knowledge is preapproved." },
+  draft_internal: { disposition: "queue_preapproved", reason: "Internal drafts may be prepared without sending or publishing." },
+  plan_tasks: { disposition: "queue_preapproved", reason: "Task planning is allowed when it does not itself mutate external systems." },
+  read_only_check: { disposition: "queue_preapproved", reason: "Read-only validation is allowed within an explicit tool scope." },
+  giie_public_research: { disposition: "queue_preapproved", reason: "Lawful public research must execute only through the isolated GIIE public knowledge space." },
+  send_external: { disposition: "await_human_approval", reason: "External communication requires explicit human approval." },
+  issue_quote: { disposition: "await_human_approval", reason: "Quotations, prices and commercial offers require explicit human approval." },
+  commit_funds: { disposition: "await_human_approval", reason: "Payments, purchases and financial commitments require explicit human approval." },
+  approve_safety: { disposition: "deny", reason: "An AI agent cannot approve safety-critical or engineering work; a competent authorized person must decide." },
+  change_production: { disposition: "await_human_approval", reason: "Production, DNS, security, deployment and credential changes require explicit human approval." },
+  mutate_business_record: { disposition: "await_human_approval", reason: "Customer, employee, supplier and financial record changes require explicit human approval." },
+  commercialize_opportunity: { disposition: "await_human_approval", reason: "Procurement, implementation and commercialization of opportunities require explicit human approval." },
+  arbitrary_shell: { disposition: "deny", reason: "Arbitrary shell execution is never exposed to a specialist worker." },
+  arbitrary_filesystem: { disposition: "deny", reason: "Unscoped filesystem access is never exposed to a specialist worker." },
+  arbitrary_network: { disposition: "deny", reason: "Unrestricted network access is never exposed to a specialist worker." },
+};
+
+/**
+ * Pure policy decision for a future durable task runner.
+ *
+ * This function does NOT enqueue, authorize a principal, grant tools, record an
+ * audit event, or execute an operation. The caller must enforce those controls.
+ */
+export function decideNeasTaskExecution(
+  operation: NeasTaskOperation,
+  context: {
+    authenticatedPrincipalId?: string | null;
+    durableAuditAvailable: boolean;
+    idempotencyKey?: string | null;
+    scopedToolGrantAvailable: boolean;
+    humanApprovalGranted?: boolean;
+  },
+): NeasTaskExecutionDecision {
+  if (!Object.hasOwn(TASK_OPERATION_POLICY, operation)) {
+    throw new Error("Unknown NEAS task operation.");
+  }
+  const rule = TASK_OPERATION_POLICY[operation];
+  const base = {
+    operation,
+    requiresAuthenticatedPrincipal: true as const,
+    requiresDurableAudit: true as const,
+    requiresIdempotencyKey: true as const,
+    requiresScopedToolGrant: true as const,
+  };
+
+  if (!context.authenticatedPrincipalId?.trim()) {
+    return { ...base, disposition: "deny", requiresHumanApproval: false, reason: "An authenticated principal is required before a task can be accepted." };
+  }
+  if (!context.durableAuditAvailable) {
+    return { ...base, disposition: "deny", requiresHumanApproval: false, reason: "Durable audit storage is unavailable; fail closed." };
+  }
+  if (!context.idempotencyKey?.trim() || context.idempotencyKey.length > 200) {
+    return { ...base, disposition: "deny", requiresHumanApproval: false, reason: "A bounded idempotency key is required." };
+  }
+  if (!context.scopedToolGrantAvailable) {
+    return { ...base, disposition: "deny", requiresHumanApproval: false, reason: "An explicit least-privilege tool grant is required." };
+  }
+  if (rule.disposition === "deny") {
+    return { ...base, disposition: "deny", requiresHumanApproval: operation === "approve_safety", reason: rule.reason };
+  }
+  if (rule.disposition === "await_human_approval" && context.humanApprovalGranted !== true) {
+    return { ...base, disposition: "await_human_approval", requiresHumanApproval: true, reason: rule.reason };
+  }
+  return {
+    ...base,
+    disposition: "queue_preapproved",
+    requiresHumanApproval: false,
+    reason: rule.reason,
+  };
+}
+
 export function buildNeasMasterBrainPlan(objective: string, maxAgents = 3): NeasMasterBrainPlan {
   const normalized = objective.trim().toLowerCase();
   if (!normalized) throw new Error("A task objective is required.");
