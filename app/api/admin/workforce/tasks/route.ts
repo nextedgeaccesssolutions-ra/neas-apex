@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeNeasScope, resolveNeasAdminPrincipalFromRequest } from "@/lib/neas-workforce-authz";
 import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
+import { getNeasWorkerConfigStatus } from "@/lib/neas-workforce-worker-config";
 import { decideNeasTaskExecution, type NeasTaskOperation } from "@/lib/neas-ai-orchestrator";
 import {
   getNeasApprovalCategory,
@@ -219,22 +220,19 @@ export async function POST(request: NextRequest) {
     const category = getNeasApprovalCategory(operation);
     if (needsApproval && !category) return jsonError("No approval category is configured for this operation.", 403);
     const initialStatus = getNeasTaskInitialStatus(decision);
-    // No authenticated worker/claim endpoint is deployed yet. Never infer readiness
-    // from a feature flag or database status alone.
-    const runtimeReady = process.env.WORKFORCE_WORKER_ENABLED === "true"
-      && Boolean(process.env.CRON_SECRET?.trim())
-      && Boolean(process.env.GEMINI_API_KEY?.trim());
+    // Configuration readiness is not live provider validation. The scheduled
+    // worker independently authenticates and validates every execution.
+    const workerConfigured = getNeasWorkerConfigStatus(process.env).configured;
     const requestId = randomUUID();
-    const safeBlockReason = runtimeReady
-      ? "Task accepted; authenticated worker claim is pending."
-      : "Task stored safely but not executed: worker runtime is not enabled or its required credentials are missing.";
+    const safeBlockReason = "Task stored safely but not queued: worker configuration is incomplete.";
 
     const inserted = await supabaseRequest<TaskRow[]>("aiw_tasks", "POST", {
       title: title.trim(),
       objective: objective.trim(),
       agent_id: agent.agent_id,
       department_code: agent.department_code,
-      status: runtimeReady ? "queued" : "blocked",
+      // Keep every task non-claimable until its task event and durable audit row exist.
+      status: "blocked",
       priority,
       input: { operation, objective: objective.trim(), requested_agent: agent.agent_id },
       idempotency_key: idempotencyKey,
@@ -245,7 +243,7 @@ export async function POST(request: NextRequest) {
       max_delegation_depth: 0,
       requires_approval: needsApproval,
       approval_category: category,
-      error_message: needsApproval ? null : safeBlockReason,
+      error_message: needsApproval || workerConfigured ? null : safeBlockReason,
     });
     const task = inserted[0];
     if (!task?.id) throw new Error("Task insert returned no row.");
@@ -272,19 +270,19 @@ export async function POST(request: NextRequest) {
 
     await supabaseRequest("aiw_task_events", "POST", {
       task_id: task.id,
-      event_type: needsApproval ? "approval_requested" : runtimeReady ? "task_queued_for_worker" : "task_blocked_runtime_unavailable",
+      event_type: needsApproval ? "approval_requested" : "task_submission_recorded",
       actor_type: "human",
       actor_id: principal.subject,
       message: needsApproval
         ? "Task recorded and held for explicit human approval."
-        : runtimeReady ? "Task queued for the authenticated shared worker; execution has not yet started." : safeBlockReason,
+        : "Task submission recorded. Worker admission occurs only after the durable audit write completes.",
       payload: {
         operation,
         decision: decision.disposition,
         policy_reason: decision.reason,
-        worker_runtime_ready: runtimeReady,
+        worker_runtime_configured: workerConfigured,
+        worker_admission_pending: !needsApproval && workerConfigured,
         execution_started: false,
-        worker_runtime_enabled: runtimeReady,
       },
     });
 
@@ -300,7 +298,7 @@ export async function POST(request: NextRequest) {
         agent_id: agent.agent_id,
         disposition: decision.disposition,
         requires_approval: needsApproval,
-        worker_runtime_ready: runtimeReady,
+        worker_runtime_configured: workerConfigured,
       },
       request_id: requestId,
     });
@@ -319,12 +317,19 @@ export async function POST(request: NextRequest) {
       }, { status: 202, headers: { "Cache-Control": "no-store" } });
     }
 
+    const finalStatus = workerConfigured ? "queued" : initialStatus;
+    const finalErrorMessage = workerConfigured ? null : safeBlockReason;
+    const admitted = await supabaseRequest<TaskRow[]>(
+      queryPath("aiw_tasks", { id: "eq." + task.id, select: "id,title,objective,agent_id,department_code,status,priority,requires_approval,approval_category,created_at,updated_at,error_message" }),
+      "PATCH",
+      { status: finalStatus, error_message: finalErrorMessage },
+    );
     return NextResponse.json({
-      task: { ...task, status: runtimeReady ? "queued" : initialStatus, error_message: runtimeReady ? null : safeBlockReason },
+      task: admitted[0] ?? { ...task, status: finalStatus, error_message: finalErrorMessage },
       executionStarted: false,
-      queuedForExecution: runtimeReady,
+      queuedForExecution: workerConfigured,
       requiresApproval: false,
-      message: runtimeReady ? "Task queued. The authenticated worker will claim it on its next scheduled run." : safeBlockReason,
+      message: workerConfigured ? "Task queued after durable event and audit records were committed. The authenticated worker will claim it on its next scheduled run." : safeBlockReason,
     }, { status: 202, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SupabaseRestError && error.status === 409) {
