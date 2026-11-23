@@ -55,3 +55,25 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - This is not yet route integration, multi-user RBAC, durable identity management, or workforce activation. Admin pages and privileged APIs remain closed until each route is individually guarded and reviewed.
 - PR: https://github.com/nextedgeaccesssolutions-ra/neas-apex/pull/54
 - CI and independent review are pending; do not treat this foundation as production authorization evidence.
+
+### Authenticated workforce task API — implementation branch
+
+- Added `POST /api/admin/workforce/tasks` and `GET /api/admin/workforce/tasks`, guarded by the signed NEAS administrator session and server-derived workforce scopes.
+- The API reads registered agents from Supabase, verifies the configured task-control tool/scope grant, validates inputs, enforces idempotency, and records task events, approval requests, and audit events.
+- External communication, quotations, payments, production changes, business-record changes, and commercialization are held for explicit human approval. Safety sign-off and arbitrary shell/filesystem/network operations remain denied.
+- Internal tasks are stored as `blocked` until a verified worker claim/execution runtime exists. The route deliberately does not infer worker readiness from an environment flag or agent database status. No model call or external side effect is performed.
+- The API route is individually allowlisted in `proxy.ts`; all other API paths remain default-deny.
+- The current rate limiter is still process-local; durable distributed rate limiting remains a security blocker.
+
+### Live Supabase workforce inventory — 24 November 2026
+
+Read-only inspection of the connected Supabase project found:
+- 90 registered agent records across 9 departments; 54 active skills and 540 enabled department-based skill assignments.
+- 87 agents are `draft_only`; 3 are `execute_approved`; all 90 have `runtime_status = not_configured`.
+- All 6 schedules are disabled. The task table contains 1 task awaiting approval. There are 53 historical audit events and no audit events in the last 24 hours.
+- 3 model routes exist; only the Vercel AI Gateway route (`openai/gpt-4o-mini`) is enabled in configuration. This is configuration evidence, not a successful live inference/health check.
+- GIIE has 0 enabled sources, 0 discoveries, and 0 research jobs. No embedding provider is selected and no embeddings exist.
+- AIW core tables have RLS enabled and no client policies, which is fail-closed for direct client access; server-side service-role access must remain behind authenticated route handlers.
+- Supabase security advisors also report 3 SECURITY DEFINER project helper functions executable by `authenticated`, and leaked-password protection is disabled. These require a separate reviewed security remediation; do not weaken project RLS to resolve them.
+
+This branch provides an authenticated task-registration and audit path only. It does not activate a worker, enable schedules, validate paid model calls, enable GIIE, or deploy production.
