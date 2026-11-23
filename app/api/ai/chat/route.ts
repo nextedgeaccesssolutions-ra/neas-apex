@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
 import { buildNeasSystemPolicy } from "@/lib/neas-ai-governance";
 import { NEAS_RUNTIME_SPECIALISTS, routeNeasRuntimeSpecialist, type NeasRuntimeSpecialistId } from "@/lib/neas-specialist-runtime";
+import { buildNeasRegistrySkillInstruction, loadNeasRegisteredSkills } from "@/lib/neas-skill-registry";
 
 
 export const runtime = "nodejs";
@@ -84,7 +85,9 @@ export async function POST(request: NextRequest) {
   const last = messages[messages.length - 1];
   if (last.role !== "user") return deny("The latest message must be from the user.", 400);
 
-  const resolvedSpecialist: SpecialistId = specialist === "auto" ? (payload.audio ? "engineering" : routeNeasRuntimeSpecialist(last.text)) : specialist;
+  const resolvedSpecialist: NeasRuntimeSpecialistId = specialist === "auto" ? (payload.audio ? "engineering" : routeNeasRuntimeSpecialist(last.text)) : specialist;
+  const registeredSkillContext = await loadNeasRegisteredSkills(resolvedSpecialist);
+  const registeredSkillInstruction = buildNeasRegistrySkillInstruction(resolvedSpecialist, registeredSkillContext.skills);
   const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [{ text: last.text }];
   if (payload.image !== undefined) {
     if (!payload.image || typeof payload.image !== "object") return deny("Invalid image attachment.", 400);
@@ -165,6 +168,8 @@ export async function POST(request: NextRequest) {
         "X-Accel-Buffering": "no",
         "X-NEAS-Agent": SPECIALIST_LABELS[resolvedSpecialist],
         "X-NEAS-Specialist": resolvedSpecialist,
+        "X-NEAS-Skills-Source": registeredSkillContext.source,
+        "X-NEAS-Skills-Loaded": String(registeredSkillContext.skills.length),
       },
     });
   } catch {
