@@ -101,3 +101,18 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - `GIIE_PUBLIC_SEARCH_ENABLED` and `GIIE_INGESTION_ENABLED` remain disabled; no Brave API key, connector token, or embedding provider was tested or changed.
 - The source quota check is count-based and not transactionally atomic under concurrent ingestion. A database-side atomic quota guard is required before high-volume scheduling.
 - No embeddings are generated; semantic retrieval is not live.
+
+### GitHub Actions recovery — 24 November 2026
+
+- Latest main commit: `6001cd9107df9beb7907f2d521844946db051a59`; latest main workflow run #128 completed successfully.
+- Run #127 (PR #65) passed all required gates: security regression tests, TypeScript, dependency audit, and Next.js production build.
+- Earlier failures are historical and remain visible in Actions: run #118 (main) and run #116 (agent skill registry) failed; run #114 (main) and #113 (task API) also failed before the later authorization-narrowing fix.
+- The task API branch gained a separate null-narrowing fix in PR #59. The earlier combined PR #58 was closed without merge. Re-check the current main task API's approval mapping and response behavior before further changes.
+- PR #64 is an open voice integration duplicate. PR #63 already merged the widget bridge and its feature-branch and main CI passed. Do not merge the duplicate without reconciliation; this branch contains only minor cleanup from the already merged component.
+- Current Actions are green for main runs #121, #123, #125, #128 and the latest PR #65. Historical failed/cancelled attempts are not current production failures.
+
+### Production configuration audit
+
+- Vercel production environment inventory showed `ELEVENLABS_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` entries configured as sensitive secrets, but encrypted values were not inspected.
+- A production alias deployment for the current main SHA reached READY. Browser live verification could not be performed in this session because the connected browser-testing service had no remaining credits. Microphone, interruption, and voice round-trip remain unverified.
+- Never claim live model inference or specialist execution from a green CI run or READY deployment. Those require separate runtime evidence.
