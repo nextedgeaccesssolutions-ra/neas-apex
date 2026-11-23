@@ -106,7 +106,7 @@ export async function loadNeasRegisteredSkills(
   specialist: NeasRuntimeSpecialistId,
 ): Promise<{ skills: NeasRegisteredSkill[]; source: "supabase" | "static-fallback"; agentId: string }> {
   const agentId = NEAS_SPECIALIST_AGENT_MAP[specialist];
-  const baseUrl = process.env.SUPABASE_URL?.trim().replace(/\/$/, "");
+  const baseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim().replace(/\/$/, "");
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!baseUrl || !serviceKey) return { skills: [], source: "static-fallback", agentId };
 
