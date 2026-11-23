@@ -11,6 +11,41 @@ export interface GiieRssFeed {
   url: string;
 }
 
+const MAX_RSS_FEED_BYTES = 1_000_000;
+
+/** Read an RSS body with a hard byte ceiling before buffering it in memory. */
+async function readBoundedFeedXml(response: Response): Promise<string> {
+  const contentLength = response.headers.get("content-length");
+  if (contentLength && /^\\d+$/.test(contentLength) && Number(contentLength) > MAX_RSS_FEED_BYTES) {
+    if (response.body) await response.body.cancel().catch(() => undefined);
+    throw new Error("Feed exceeds the 1 MB ingestion limit.");
+  }
+
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let totalBytes = 0;
+  let xml = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_RSS_FEED_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error("Feed exceeds the 1 MB ingestion limit.");
+      }
+      xml += decoder.decode(value, { stream: true });
+    }
+    return xml + decoder.decode();
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 function decodeXml(value: string): string {
   return value
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -77,8 +112,7 @@ export async function fetchConfiguredRssFeeds(): Promise<{ items: GiieRssItem[];
       if (!response.ok) throw new Error("HTTP " + response.status);
       const contentType = response.headers.get("content-type") ?? "";
       if (!/(xml|rss|atom)/i.test(contentType)) throw new Error("Unexpected RSS content type.");
-      const xml = await response.text();
-      if (xml.length > 1_000_000) throw new Error("Feed exceeds the 1 MB ingestion limit.");
+      const xml = await readBoundedFeedXml(response);
 
       const entries = xml.match(/<(item|entry)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi) ?? [];
       for (const entry of entries.slice(0, 50)) {
