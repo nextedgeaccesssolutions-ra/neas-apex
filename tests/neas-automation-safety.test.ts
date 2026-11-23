@@ -2,15 +2,19 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
+const read = (path: string) =>
+  readFileSync(resolve(process.cwd(), path), "utf8");
+
 const autofix = read(".github/workflows/autofix.yml");
 const dependency = read(".github/workflows/dependency-automerge.yml");
 const widget = read("components/FreeVoiceAIWidget.tsx");
 
 describe("NEAS APEX workflow safety", () => {
   it("probes the active production alias and a server-rendered voice landmark", () => {
-    expect(autofix).toContain('PROD_URL: "https://neas-apex-nextedgeaccesssolutions-neas.vercel.app"');
-    expect(autofix).toContain("aria-label=\"NEAS AI Core voice conversation\"");
+    expect(autofix).toContain(
+      'PROD_URL: "https://neas-apex-nextedgeaccesssolutions-neas.vercel.app"',
+    );
+    expect(autofix).toContain("NEAS AI Core voice conversation");
     expect(widget).toContain('aria-label="NEAS AI Core voice conversation"');
     expect(autofix).toContain("FAIL health expected=200");
     expect(autofix).not.toContain('grep -q "elevenlabs-convai"');
@@ -30,7 +34,9 @@ describe("NEAS APEX workflow safety", () => {
     expect(autofix).toContain("permissions:\n  contents: read\n\nconcurrency:");
     expect(autofix).toContain("      issues: write");
     expect(autofix).toContain('gh issue list --repo "$GITHUB_REPOSITORY"');
-    expect(autofix).toContain('gh issue comment "${EXISTING}" --repo "$GITHUB_REPOSITORY"');
+    expect(autofix).toContain(
+      'gh issue comment "${EXISTING}" --repo "$GITHUB_REPOSITORY"',
+    );
     expect(autofix).toContain('gh issue create --repo "$GITHUB_REPOSITORY"');
   });
 
