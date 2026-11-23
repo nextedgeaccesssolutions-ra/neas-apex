@@ -1,7 +1,6 @@
 "use client";
 
-import { createElement, useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import Script from "next/script";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import EngineeringAITaskEngine, { type SpecialistId } from "./EngineeringAITaskEngine";
 import EngineeringAIWelcome from "./EngineeringAIWelcome";
 
@@ -84,6 +83,7 @@ export default function FreeVoiceAIWidget() {
   const [elevenLabsReady, setElevenLabsReady] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const voiceMountRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<RecognitionInstance | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -128,17 +128,43 @@ export default function FreeVoiceAIWidget() {
       window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: false } }));
       window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
     };
-    const attach = async () => {
-      await customElements.whenDefined("elevenlabs-convai");
-      if (cancelled) return;
-      widget = document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
-      if (!widget) return;
-      elevenLabsWidgetRef.current = widget;
-      setElevenLabsReady(typeof widget.startConversation === "function");
-      widget.addEventListener("conversationStarted", onConversationStarted);
-      widget.addEventListener("conversationEnded", onConversationEnded);
+    const mountWidget = () => {
+      if (cancelled || !voiceMountRef.current || !customElements.get("elevenlabs-convai")) return;
+      let element = document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
+      if (!element) {
+        element = document.createElement("elevenlabs-convai") as ElevenLabsWidgetElement;
+        element.id = "neas-elevenlabs-voice";
+        element.setAttribute("agent-id", NEAS_ELEVENLABS_AGENT_ID);
+        element.setAttribute("variant", "full");
+        element.setAttribute("server-location", "global");
+        element.style.cssText = "position:fixed;left:-10000px;bottom:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none";
+        voiceMountRef.current.appendChild(element);
+      }
+      widget = element;
+      elevenLabsWidgetRef.current = element;
+      setElevenLabsReady(typeof element.startConversation === "function");
+      element.addEventListener("conversationStarted", onConversationStarted);
+      element.addEventListener("conversationEnded", onConversationEnded);
     };
-    void attach();
+    const loadScript = (src: string, fallback?: string) => {
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = src;
+      script.dataset.neasElevenlabs = "true";
+      script.onload = () => { void customElements.whenDefined("elevenlabs-convai").then(mountWidget); };
+      script.onerror = () => {
+        script.remove();
+        if (fallback && !cancelled) loadScript(fallback);
+        else if (!cancelled) setError("NEAS ElevenLabs voice could not load. Check the connection and retry.");
+      };
+      document.head.appendChild(script);
+    };
+    if (customElements.get("elevenlabs-convai")) mountWidget();
+    else if (!document.querySelector('script[data-neas-elevenlabs="true"]')) {
+      loadScript("https://unpkg.com/@elevenlabs/convai-widget-embed", "https://cdn.jsdelivr.net/npm/@elevenlabs/convai-widget-embed");
+    } else {
+      void customElements.whenDefined("elevenlabs-convai").then(mountWidget);
+    }
     return () => {
       cancelled = true;
       widget?.removeEventListener("conversationStarted", onConversationStarted);
@@ -487,27 +513,7 @@ export default function FreeVoiceAIWidget() {
 
   return (
     <>
-      <Script
-        src="https://unpkg.com/@elevenlabs/convai-widget-embed"
-        strategy="afterInteractive"
-        onError={() => setError("The NEAS voice widget could not be loaded. Check the connection and try again.")}
-      />
-      {createElement("elevenlabs-convai", {
-        id: "neas-elevenlabs-voice",
-        "agent-id": NEAS_ELEVENLABS_AGENT_ID,
-        variant: "expanded",
-        "server-location": "global",
-        "avatar-image-url": "https://www.nextedge-access-solutions.com/neas-ai-avatar.webp",
-        "avatar-orb-color-1": "#CA9332",
-        "avatar-orb-color-2": "#EBC07E",
-        "action-text": "Talk to NEAS AI",
-        "start-call-text": "Start voice conversation",
-        "end-call-text": "End voice conversation",
-        dismissible: "true",
-        // Keep the custom element mounted and rendered so its WebRTC/audio lifecycle can start.
-        // The visible NEAS panel owns the controls; the vendor widget remains visually hidden.
-        style: { position: "fixed", left: "-10000px", bottom: 0, width: "1px", height: "1px", opacity: 0, overflow: "hidden", pointerEvents: "none" },
-      })}
+      <div ref={voiceMountRef} aria-hidden="true" />
       <section style={panelStyle} aria-label="NEAS AI Core voice conversation">
       <style>{`
         .neas-ai-core-launch { position:relative; isolation:isolate; overflow:hidden; animation:neasCorePulse 2.8s ease-in-out infinite; box-shadow:0 0 0 0 rgba(235,192,126,.42),0 0 18px rgba(202,147,50,.2); transition:transform .2s ease,box-shadow .2s ease; }
