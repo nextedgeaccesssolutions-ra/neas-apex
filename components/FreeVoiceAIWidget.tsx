@@ -420,17 +420,17 @@ export default function FreeVoiceAIWidget() {
     voiceEnabledRef.current = true;
     setVoiceEnabled(true);
     widget.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } } }));
+    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } }));
     // Mic first (cancels stale speech output), then the greeting. Barge-in stays
     // active: talking over the greeting cancels it via the recognition handler.
     if (!recognitionRef.current && !mediaRecorderRef.current) startListeningRef.current();
     greetingActiveRef.current = true;
     const greeted = speak("Welcome to NextEdge Access Solutions. I am NEAS AI Core. Please tell me how I can help.", () => {
       setSpeaking(true);
-      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } } }));
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } }));
     }, () => {
       setSpeaking(false);
-      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } } }));
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
       greetingActiveRef.current = false;
       if (voiceEnabledRef.current && !recognitionRef.current && !busyRef.current) startListeningRef.current();
     }, (message) => {
