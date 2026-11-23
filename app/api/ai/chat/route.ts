@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION + "\n\nActive specialist agent: " + SPECIALIST_LABELS[resolvedSpecialist] + ".\n\nSpecialist operating instructions: " + NEAS_RUNTIME_SPECIALISTS[resolvedSpecialist].guidance }] },
+            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION + "\n\nActive specialist agent: " + SPECIALIST_LABELS[resolvedSpecialist] + ".\n\nSpecialist operating instructions: " + NEAS_RUNTIME_SPECIALISTS[resolvedSpecialist].guidance + (registeredSkillInstruction ? "\n\n" + registeredSkillInstruction : "") }] },
             contents,
             generationConfig: { maxOutputTokens: 700 },
           }),
