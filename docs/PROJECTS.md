@@ -77,3 +77,20 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - The mapping is explicitly limited to 12 representative profiles; it does not imply that all 90 workforce records are separate model instances. All 90 records remain `runtime_status=not_configured`; no background workers or external-action permissions are activated.
 - To use database-backed skills in deployment, configure `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`) and `SUPABASE_SERVICE_ROLE_KEY` as private server-side Vercel environment variables for the relevant environment. Never expose the service-role key to browser code or use a `NEXT_PUBLIC_` service-key variable.
 - Added unit tests for the specialist-to-agent mapping, active-skill normalization, and prompt guardrail preservation. CI and a deployed runtime probe remain pending.
+
+### GIIE source governance and guarded ingestion — implementation branch
+
+- Added an owner-session source registry API: `GET/POST/PATCH /api/admin/giie/sources`.
+- New sources are always registered disabled. Enabling requires an explicit owner review note, terms review, robots-policy review, and a positive per-hour quota. Source changes create durable AIW audit events.
+- GIIE search and ingest endpoints now support either a valid server-to-server connector token or the signed NEAS administrator session with the matching GIIE scope. Their exact routes are allowlisted; unlisted API paths remain default-deny.
+- Ingestion now requires an enabled, terms-reviewed and robots-reviewed registry entry whose normalized URL and source type match. It applies an hourly database-count quota check, preserves duplicate discoveries, and never stores confidential NEAS knowledge in the public GIIE tables.
+- Discovery validation rejects malformed objects, unsupported source/evidence/status values, oversized text, invalid dates, credentials in source URLs, malformed arrays, and invalid confidence values.
+- Removed stale ElevenLabs API paths from the proxy allowlist because no corresponding route exists in this repository. The current visitor widget uses browser-native speech recognition/synthesis and submits audio to the Gemini chat route; it is not an ElevenLabs live integration.
+
+### Remaining GIIE and voice activation blockers
+
+- The connected Supabase project still has 0 enabled GIIE sources, 0 discoveries, and 0 research jobs. The new registry API does not auto-enable sources.
+- `GIIE_PUBLIC_SEARCH_ENABLED` and `GIIE_INGESTION_ENABLED` remain disabled; no Brave API key, connector token, or embedding provider was tested or changed.
+- The source quota check is count-based and not transactionally atomic under concurrent ingestion. A database-side atomic quota guard is required before high-volume scheduling.
+- No embeddings are generated; semantic retrieval is not live.
+- Browser voice has not passed a live microphone/interruption/end-to-end acceptance test in the deployed browser. No ElevenLabs API endpoint is present.
