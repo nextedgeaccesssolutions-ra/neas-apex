@@ -158,11 +158,48 @@ export default function FreeVoiceAIWidget() {
           ...(audio ? { audio } : {}),
         }),
       });
-      const data = await response.json().catch(() => ({})) as { reply?: string; error?: string; agent?: string; specialist?: SpecialistId };
-      if (!response.ok || !data.reply) throw new Error(data.error || "NEAS AI is temporarily unavailable.");
-      const reply = data.reply.trim();
-      setMessages((current) => [...current, { id: `assistant:${Date.now()}`, role: "assistant", text: reply, agent: data.agent || "NEAS AI Agent" }]);
-      if (voiceEnabledRef.current) speak(reply, () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }, (message) => setError(message));
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error || "NEAS AI is temporarily unavailable.");
+      }
+      if (!response.body) throw new Error("The AI response stream could not be opened.");
+      const assistantId = "assistant:" + Date.now();
+      const agent = response.headers.get("X-NEAS-Agent") || "NEAS AI Agent";
+      setMessages((current) => [...current, { id: assistantId, role: "assistant", text: "", agent }]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let reply = "";
+      const consumeEvent = (eventText: string) => {
+        for (const line of eventText.split("\n")) {
+          if (!line.startsWith("data:")) continue;
+          const raw = line.slice(5).trim();
+          if (!raw || raw === "[DONE]") continue;
+          try {
+            const packet = JSON.parse(raw) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+            const delta = packet.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
+            if (delta) {
+              reply += delta;
+              setMessages((current) => current.map((message) => message.id === assistantId ? { ...message, text: reply } : message));
+            }
+          } catch {
+            // Ignore incomplete provider frames; the next SSE frame completes them.
+          }
+        }
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+        for (const eventText of events) consumeEvent(eventText);
+      }
+      buffer += decoder.decode();
+      if (buffer.trim()) consumeEvent(buffer);
+      const finalReply = reply.trim();
+      if (!finalReply) throw new Error("NEAS AI returned an empty response. Please retry.");
+      if (voiceEnabledRef.current) speak(finalReply, () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }, (message) => setError(message));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to reach the free AI service.");
     } finally {
