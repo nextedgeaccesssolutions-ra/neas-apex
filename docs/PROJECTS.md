@@ -116,3 +116,19 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - Vercel production environment inventory showed `ELEVENLABS_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` entries configured as sensitive secrets, but encrypted values were not inspected.
 - A production alias deployment for the current main SHA reached READY. Browser live verification could not be performed in this session because the connected browser-testing service had no remaining credits. Microphone, interruption, and voice round-trip remain unverified.
 - Never claim live model inference or specialist execution from a green CI run or READY deployment. Those require separate runtime evidence.
+
+## GitHub Actions status and next activation blockers — 24 November 2026
+
+Verified against the live repository and connected Supabase project:
+- Main is at `6001cd9107df9beb7907f2d521844946db051a59`; workflow run #128 passed. PR #65 run #127 passed the security tests, TypeScript, dependency audit, and Next.js production build. The main run immediately after PR #63 also passed all four gates.
+- Older runs #118, #116, #114 and #113 failed during earlier iterations; they are historical failures, not the current main check. Do not delete or rewrite workflow history to make the Actions page appear green.
+- Current production deployment for main commit `73f83f2d0550982fc6bd7f71a471c81e754ba1b9` is READY. The latest Actions main SHA `6001cd9` has not yet been independently confirmed as the current production deployment in this audit.
+- PR #64 duplicates the already merged #63 voice bridge. Do not merge #64. Its source change is already in main via #63; the follow-on cleanup is in PR #66.
+- Live Supabase inventory: 90/90 agent records enabled, 90/90 `runtime_status=not_configured`; 87 `draft_only`, 3 `execute_approved`; all agents have only baseline task-control permissions and no safety/external/financial/production grants. Six schedules exist and zero are enabled.
+- The task API persists and audits requests but sets every new task to `blocked` unless explicitly awaiting approval. It contains no worker claim or execution loop. No automated task has been executed.
+- Live model route configuration has one enabled route (`openai/gpt-4o-mini` through Vercel AI Gateway); no successful inference probe has been recorded. The new probe endpoint is gated by `NEAS_LIVE_MODEL_VALIDATION_ENABLED=true` and per-request `confirmSpend=true`.
+- GIIE tables currently show zero sources, zero discoveries, zero research jobs, and zero embeddings. GIIE feature flags and credentials were not enabled. Source governance is merged, but ingestion and semantic retrieval are not live.
+- Security foundation has a signed single-administrator session, scope authorization and default-deny proxy. Remaining gaps include process-local rate limiting, no multi-user RBAC/IdP, no independent security review, and unresolved Supabase security advisor findings (SECURITY DEFINER functions and leaked-password protection).
+- Voice agent main branch was updated with NEAS AI Core greeting/prompt identity, domain allowlist, Zero Retention, recording-off, and guardrails. The website widget bridge is in main, but live browser microphone, interruption, and two-way audio tests have not been completed because the browser test service had no credits. The agent has no workforce tools.
+
+Production activation remains blocked until the worker/queue, durable rate limiting, tested model/voice paths, GIIE source approval/provider/embedding setup, independent security review, and timestamped acceptance evidence are all in place.
