@@ -6,33 +6,36 @@ Last updated: 2026-11-24
 
 | Project | State | Scope | Next gate |
 |---|---|---|---|
-| NEAS APEX holographic voice avatar | Voice-motion integration implemented on preview branch; live smoke test pending | Supplied portrait in the gold core; browser-native speech recognition/recording, browser speech synthesis, real conversation-state events, tappable core activation, breathing/eye effects and speaking waveform. No ElevenLabs dependency in this path. | CI and live microphone/speech smoke test; router/workforce prerequisites remain separate. |
-| NEAS Universal AI Router + specialist workforce | Implementation branch opened; 12-domain chat routing added, live model/runtime validation still blocked on provider credentials and production smoke tests | Twelve specialist instruction profiles are now registered in the Gemini chat route; this remains deterministic prompt routing, not 12 independently deployed agents. | Add runtime orchestration, provider health checks, approved tool contracts, authenticated task queue, persistent audit, and validate model credentials in production. |
+| NEAS APEX holographic voice avatar | Browser-native voice-motion implementation exists; live round-trip acceptance remains pending | Supplied portrait in the gold core; browser-native speech recognition/recording, browser speech synthesis, conversation-state events, tap activation, and speaking waveform. This is distinct from a verified ElevenLabs session. | Complete live preview microphone, speech, interruption, reconnect, image/vision, and specialist handoff tests. |
+| NEAS AI CORE model access | Gemini chat route and model candidate fallback exist; production inference is unverified | Server-side Gemini streaming path with environment-configured model candidates. Environment-variable presence is not credential validation. | Run an authenticated, low-cost, server-side inference probe and record provider/model, timestamp, latency, structured response, and sanitized evidence without exposing credentials. |
+| NEAS specialist workforce | 12 deterministic instruction profiles and prompt routing exist; agent execution is NOT CONFIGURED | Current Master Brain is a planner only: `executionAllowed: false`, `analysis-and-draft-only`, and `internal-only`. Profiles are not separate agents or durable workers. | Implement an authenticated persistent task/approval/audit system, bounded queue/worker, allowlisted tool contracts, retries/idempotency, cancellation, timeouts, traces, and per-agent acceptance tests. Reconcile historical counts of 24 UI specialists, 21 profile IDs, and 12 discipline profiles before declaring the authoritative workforce size. |
+| NEAS runtime security | Fail-closed evidence evaluator exists; complete runtime controls are unverified | `lib/neas-api-security.ts` readiness evaluator requires fresh explicit evidence, but the current rate limiter is process-memory-only. `proxy.ts` defaults unreviewed API routes to 404. | Establish authenticated identity, role/scope authorization, durable distributed rate limiting, append-only audit, tool allowlists, adversarial tests, and safe route allowlisting. |
+| NEAS GIIE | Public search and ingestion adapters exist but are disabled; live ingestion and retrieval are NOT CONFIGURED | Search requires `GIIE_PUBLIC_SEARCH_ENABLED=true`, Brave credentials, and the server-to-server connector token. Ingestion additionally requires `GIIE_INGESTION_ENABLED=true`, Supabase URL/service key, and an applied/validated migration. RSS is bounded and host-allowlisted. Embedding provider is not selected. | Validate migrations against staging; configure approved public sources and server-only credentials; add queued/scheduled discovery, normalization, deduplication, evidence/audit, explicit embedding provider/model, populated vectors, and semantic retrieval tests. Keep confidential NEAS data out of public providers. |
+| Production release gate | Production deployment is READY for current main code; workforce activation is NOT APPROVED | The readiness evaluator is a gate, not an implementation or live verification. No domain alias reassignment or privileged production configuration is implied by a code deployment. | Preview integration tests, complete acceptance evidence, independent security review, cost/rollback report, then explicit owner sign-off before production activation. |
 
-## Completed in this change
+## Verified implementation and CI evidence
 
-- [x] Add the supplied NEAS AI holographic portrait asset.
-- [x] Place the avatar and microphone/photo controls in the central gold orb.
-- [x] Add idle breathing, eye glow and audio-level-driven mouth waveform.
-- [x] Connect browser-native microphone and speech synthesis lifecycle events to the central core state.
-- [x] Connect photo selection to the ElevenLabs multimodal file-upload and message APIs.
-- [x] Configure the NEAS APEX welcome greeting and preserve strict origin-header checks.
-- [x] Add a safe public agent/branch configuration endpoint; no API key is returned to the browser.
-- [x] Add automated typecheck, test and build checks for pull requests.
+- [x] Twelve deterministic specialist instruction profiles and chat prompt routing are merged.
+- [x] Renewable-energy routing precedence correction is merged.
+- [x] Fail-closed runtime readiness evidence evaluator is merged.
+- [x] GIIE RSS response memory bound and regression coverage are merged.
+- [x] Recent reported CI for PR #49: 12 test files / 61 tests, TypeScript, npm audit, and production build passed on the exact PR head.
+- [x] Recent reported CI for PR #50: 11 test files / 56 tests, TypeScript, npm audit, and production build passed on the exact PR head.
+- [x] Current production deployment for main commit `07a142ff07cba9cb5d1acc62cbc59350654dd0d3` is READY in Vercel.
+- [ ] No live model inference evidence recorded.
+- [ ] No complete browser-native or ElevenLabs live voice round-trip acceptance evidence recorded.
+- [ ] No durable autonomous specialist task execution evidence recorded.
+- [ ] No fully validated identity/authorization/durable rate-limit/audit evidence recorded.
+- [ ] No verified staging/production GIIE migration, live discovery, ingestion, embeddings, or semantic retrieval evidence recorded.
 
-## Remaining acceptance gates
+## Required activation evidence
 
-- [x] GitHub CI passes: typecheck, tests and production build.
-- [x] Vercel preview deploys and its exact host is added to the ElevenLabs origin allowlist.
-- [ ] Verify live microphone, interruption, speaking animation and photo analysis in the preview; automated browser smoke test remains pending.
-- [ ] Connect the Universal AI Router only after the server-side OpenRouter credential and router endpoints are configured.
-- [ ] Connect specialist tools only after the workforce APIs, scopes, approvals and audit contracts are verified.
-- [ ] No automatic merge or production deployment in this change.
-
-## NEAS AI runtime activation gate
-
-The APEX runtime must remain fail-closed until each privileged capability has a fresh, explicit evidence record. Environment-variable presence, a successful preview deployment, deterministic prompt routing, or a static security scan is not proof of live operation.
+The APEX runtime must remain fail-closed until each privileged capability has a fresh, explicit evidence record. Environment-variable presence, successful CI, a READY deployment, deterministic prompt routing, or a static security scan is not proof of live operation.
 
 Required evidence: authenticated identity; role/scope authorization; durable distributed rate limiting; durable append-only audit; persistent task storage; live model authentication and inference; live voice round-trip; specialist task execution and controlled tool contracts; GIIE search; GIIE ingestion; and GIIE semantic retrieval. Each item must be tested in the deployed environment, carry a verification timestamp and evidence reference, and expire after 15 minutes unless the verifier supplies a stricter window.
 
 The readiness evaluator in `lib/neas-api-security.ts` is an evidence gate only. It does not authenticate users, execute agents, validate provider credentials, or replace the underlying controls. New privileged routes remain blocked by `proxy.ts` unless individually reviewed and allowlisted.
+
+## Non-negotiable safety boundary
+
+Keep external communications, customer proposals/quotes, payments, purchases, contracts, business-record mutations, production/security changes, and safety-critical or engineering approvals under human approval. Public research must remain in the separate GIIE knowledge space and comply with source terms, robots directives, copyright, privacy, and rate limits. Do not enable paid provider usage or production ingestion without the owner-approved credentials and budget/configuration.
