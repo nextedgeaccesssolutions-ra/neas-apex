@@ -39,3 +39,10 @@ The readiness evaluator in `lib/neas-api-security.ts` is an evidence gate only. 
 ## Non-negotiable safety boundary
 
 Keep external communications, customer proposals/quotes, payments, purchases, contracts, business-record mutations, production/security changes, and safety-critical or engineering approvals under human approval. Public research must remain in the separate GIIE knowledge space and comply with source terms, robots directives, copyright, privacy, and rate limits. Do not enable paid provider usage or production ingestion without the owner-approved credentials and budget/configuration.
+
+### Task execution policy foundation
+
+- A pure task-operation policy now defines which bounded internal operations may be queued, which operations require explicit human approval, and which operations are prohibited.
+- Task acceptance is fail-closed unless an authenticated principal, durable audit capability, idempotency key, and scoped tool grant are present.
+- Safety/engineering approval and arbitrary shell, filesystem, or unrestricted network operations remain denied even when a human approval flag is supplied.
+- This policy is not a worker, queue, database, authentication provider, or audit implementation. No API endpoint has been exposed and no task is being executed by this change.
