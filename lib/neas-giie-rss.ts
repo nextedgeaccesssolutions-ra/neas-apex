@@ -16,7 +16,7 @@ const MAX_RSS_FEED_BYTES = 1_000_000;
 /** Read an RSS body with a hard byte ceiling before buffering it in memory. */
 async function readBoundedFeedXml(response: Response): Promise<string> {
   const contentLength = response.headers.get("content-length");
-  if (contentLength && /^\\d+$/.test(contentLength) && Number(contentLength) > MAX_RSS_FEED_BYTES) {
+  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > MAX_RSS_FEED_BYTES) {
     if (response.body) await response.body.cancel().catch(() => undefined);
     throw new Error("Feed exceeds the 1 MB ingestion limit.");
   }
