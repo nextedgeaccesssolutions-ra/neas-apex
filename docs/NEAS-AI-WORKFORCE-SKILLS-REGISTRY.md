@@ -7,7 +7,7 @@
 - Backfilled 540 active assignments: six department-specific skills for each of the 90 registered agents. Each assignment carries the agent's role name, job mandate, skill-specific operating guidance, priority, and working-level proficiency label.
 - Enabled the `aiw_agents_auto_assign_department_skills` database trigger. New agents and department changes automatically receive the active skills for their department; the legacy `aiw_agents.skills` JSON array is synchronized for compatibility.
 - Enabled RLS on the three new registry tables. Authenticated users have read-only access; writes are reserved for the server-side service role. No service-role credential is exposed to clients.
-- Verification: 90/90 agents have six synchronized skills; 540 enabled assignments; 54 active catalogue skills; trigger enabled. No skill evaluations have been recorded yet.
+- Verification: 90/90 agents have six synchronized skills; 540 enabled assignments; 54 active catalogue skills; trigger enabled. A baseline evaluation row is automatically registered for every assignment with status `not_tested`; 540 such records are present. These are tracking records, not passed tests.
 - Runtime boundary: all 90 agents still report `runtime_status=not_configured`. Three records (CEO, Engineering Director, HSEQ Director) have `execution_mode=execute_approved`; the remaining 87 are `draft_only`. This migration did not change those settings, activate model execution, or authorize external actions.
 - Migration source: `supabase/migrations/202611240002_aiw_skills_registry_automation.sql`. Implementation PR is pending review and merge.
 
@@ -19,8 +19,14 @@
 
 ## Assignment automation
 
-The database trigger `aiw_agents_auto_assign_department_skills` runs after agent creation or department changes. It assigns the active skills in the matching department, removes stale automatic assignments from a previous department, preserves manual assignments, and synchronizes the legacy `aiw_agents.skills` JSON array.
+The database trigger `aiw_agents_auto_assign_department_skills` runs after agent creation or department changes. It assigns the active skills in the matching department, removes stale automatic assignments from a previous department, preserves manual assignments, synchronizes the legacy `aiw_agents.skills` JSON array, and registers a `not_tested` baseline evaluation record for each new assignment.
 
 ## Activation boundary
 
 A catalogue entry and assignment are configuration records, not proof of model capability, certification, or successful execution. Runtime activation requires live model credentials, authenticated execution, scoped tools, durable audit, evaluations, and explicit release evidence. Safety-critical approvals, engineering certification, permits, external communications, purchases, payments, contracts, and production changes remain subject to human approval.
+
+
+## Migrations
+
+- `202611240002_aiw_skills_registry_automation.sql` — catalogue, assignments, RLS, department assignment trigger and existing-agent backfill.
+- `202611240003_aiw_skill_evaluation_automation.sql` — baseline evaluation tracking for existing and future assignments.
