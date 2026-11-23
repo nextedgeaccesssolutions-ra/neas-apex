@@ -45,4 +45,10 @@ describe("NEAS APEX workflow safety", () => {
     expect(dependency).toContain("independent human reviewer");
     expect(dependency).not.toContain("gh pr merge --auto");
   });
+
+  it("keeps the scheduled production probe on a valid five-field cron expression", () => {
+    const schedule = autofix.match(/^\s*-\s*cron:\s*["']([^"']+)["']\s*$/m)?.[1];
+    expect(schedule).toBe("*/30 * * * *");
+    expect(schedule?.trim().split(/\s+/)).toHaveLength(5);
+  });
 });
