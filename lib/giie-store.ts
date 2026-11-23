@@ -264,3 +264,41 @@ export async function persistPublicDiscovery(discovery: GiieDiscovery): Promise<
   );
   return { inserted: false, id: duplicate[0]?.id };
 }
+
+export async function beginGiieAuditEvent(input: {
+  actorId: string;
+  action: string;
+  details: Record<string, unknown>;
+  requestId: string;
+}): Promise<string> {
+  const rows = await supabaseRequest<Array<{ id: string }>>("aiw_audit_events", "POST", {
+    actor_type: "human",
+    actor_id: input.actorId,
+    action: input.action,
+    resource_type: "giie_source",
+    resource_id: null,
+    outcome: "pending",
+    details: input.details,
+    request_id: input.requestId,
+  });
+  if (!rows[0]?.id) throw new Error("GIIE audit event could not be created.");
+  return rows[0].id;
+}
+
+export async function completeGiieAuditEvent(input: {
+  id: string;
+  outcome: "success" | "failure";
+  resourceId?: string | null;
+  details: Record<string, unknown>;
+}): Promise<void> {
+  const params = new URLSearchParams({ id: "eq." + input.id });
+  await supabaseRequest(
+    "aiw_audit_events?" + params.toString(),
+    "PATCH",
+    {
+      outcome: input.outcome,
+      resource_id: input.resourceId ?? null,
+      details: input.details,
+    },
+  );
+}
