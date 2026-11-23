@@ -27,3 +27,11 @@ Only HTTPS feed URLs on explicitly allowlisted exact hostnames are fetched. Redi
 - RSS feed configuration is empty until an administrator supplies reviewed sources.
 - Search results and RSS items are returned as discovery leads; persistence, deduplication, source verification, and scheduled ingestion are separate next milestones.
 - No database migration has been applied. The SQL migration is committed for review only.
+
+## Controlled persistence endpoint
+
+The server-side persistence adapter writes validated public discovery metadata to `public.giie_discoveries` using Supabase REST. It requires server-only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, and never exposes the service key to a client.
+
+The endpoint `POST /api/giie/ingest` is disabled unless `GIIE_INGESTION_ENABLED=true` and requires the same server-to-server `GIIE_CONNECTOR_API_TOKEN`. It validates the public knowledge-space label, source URL, source metadata, lawful summary, dates, and confidence; normalizes source URLs; and ignores duplicate normalized URLs. New rows remain `review_required=true`. The route does not mark sources verified or approve opportunity implementation.
+
+Do not enable ingestion until the database migration has been reviewed and applied, the service-role key is stored server-side, and the internal caller is authorized.
