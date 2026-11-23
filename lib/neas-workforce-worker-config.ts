@@ -15,7 +15,18 @@ export function getNeasWorkerConfigStatus(env: NeasWorkerEnvironment): NeasWorke
 
   if (env.WORKFORCE_WORKER_ENABLED !== "true") missing.push("WORKFORCE_WORKER_ENABLED");
   if (cronSecret.length < 32) missing.push("CRON_SECRET");
-  if (!geminiKey) missing.push("GEMINI_API_KEY");
+  if ((env.WORKER_LLM_PROVIDER ?? "gemini").trim().toLowerCase() === "lmstudio") {
+    // Local LM Studio (or any OpenAI-compatible server). Reachable only from
+    // machines that can see the base URL — local dev, never Vercel.
+    const base = (env.LMSTUDIO_BASE_URL ?? "http://localhost:1234/v1").trim();
+    try {
+      const parsed = new URL(base);
+      if (!["http:", "https:"].includes(parsed.protocol)) missing.push("LMSTUDIO_BASE_URL");
+    } catch {
+      missing.push("LMSTUDIO_BASE_URL");
+    }
+    if (!(env.LMSTUDIO_MODEL ?? "").trim()) missing.push("LMSTUDIO_MODEL");
+  } else if (!geminiKey) missing.push("GEMINI_API_KEY");
   if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
 
   try {

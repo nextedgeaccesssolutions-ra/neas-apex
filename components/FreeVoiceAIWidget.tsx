@@ -6,7 +6,11 @@ import EngineeringAIWelcome from "./EngineeringAIWelcome";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string; agent?: string };
 type AudioInput = { mimeType: string; data: string };
-type ElevenLabsWidgetElement = HTMLElement & { startConversation?: () => Promise<unknown> | void; endConversation?: () => Promise<unknown> | void };
+// The @elevenlabs/convai-widget-embed bundle (verified against 0.28.0 dist) exposes NO
+// startConversation/endConversation methods and NO conversationStarted/Ended events.
+// The <elevenlabs-convai> element is declarative: it renders its own orb + call UI and
+// the user starts the call with the widget's own button (a genuine mic/autoplay gesture).
+type ElevenLabsWidgetElement = HTMLElement;
 const NEAS_ELEVENLABS_AGENT_ID = process.env.NEXT_PUBLIC_NEAS_ELEVENLABS_AGENT_ID || "agent_8601m7zrgsg4f98srgkekzq7ana9";
 type RecognitionAlternative = { transcript: string };
 type RecognitionResult = { isFinal: boolean; 0: RecognitionAlternative };
@@ -110,24 +114,10 @@ export default function FreeVoiceAIWidget() {
 
   useEffect(() => {
     let cancelled = false;
-    let widget: ElevenLabsWidgetElement | null = null;
-    const onConversationStarted = () => {
-      elevenLabsActiveRef.current = true;
-      voiceEnabledRef.current = true;
-      setVoiceEnabled(true);
-      setListening(true);
-      setSpeaking(false);
-      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } }));
-    };
-    const onConversationEnded = () => {
-      elevenLabsActiveRef.current = false;
-      voiceEnabledRef.current = false;
-      setVoiceEnabled(false);
-      setListening(false);
-      setSpeaking(false);
-      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: false } }));
-      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
-    };
+    // NOTE: the convai-widget-embed bundle exposes no conversationStarted/Ended
+    // events and no startConversation/endConversation methods (verified in dist).
+    // The widget renders its own orb + call button; the call starts from the
+    // user's tap on the widget itself, which also satisfies mic/autoplay gesture rules.
     const mountWidget = () => {
       if (cancelled || !voiceMountRef.current || !customElements.get("elevenlabs-convai")) return;
       let element = document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
@@ -137,14 +127,16 @@ export default function FreeVoiceAIWidget() {
         element.setAttribute("agent-id", NEAS_ELEVENLABS_AGENT_ID);
         element.setAttribute("variant", "full");
         element.setAttribute("server-location", "global");
-        element.style.cssText = "position:fixed;left:-10000px;bottom:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none";
+        // Keep the widget mounted for session startup, but visible and tappable.
+        // Hidden 1px/off-screen parking breaks mic gesture + autoplay and guarantees no audio round-trip.
+        element.style.cssText = "position:fixed;right:20px;bottom:20px;z-index:70;";
+        element.setAttribute("data-neas-voice-mounted", "true");
         voiceMountRef.current.appendChild(element);
       }
-      widget = element;
       elevenLabsWidgetRef.current = element;
-      setElevenLabsReady(typeof element.startConversation === "function");
-      element.addEventListener("conversationStarted", onConversationStarted);
-      element.addEventListener("conversationEnded", onConversationEnded);
+      // The custom element being defined means the widget script loaded and the
+      // element upgraded; the widget then renders its own tappable call UI.
+      setElevenLabsReady(true);
     };
     const loadScript = (src: string, fallback?: string) => {
       const script = document.createElement("script");
@@ -167,8 +159,6 @@ export default function FreeVoiceAIWidget() {
     }
     return () => {
       cancelled = true;
-      widget?.removeEventListener("conversationStarted", onConversationStarted);
-      widget?.removeEventListener("conversationEnded", onConversationEnded);
       elevenLabsWidgetRef.current = null;
     };
   }, []);
@@ -413,39 +403,50 @@ export default function FreeVoiceAIWidget() {
   }, [listening, pending, sendMessage, startRecordingFallback]);
   startListeningRef.current = startListening;
 
-  // Start the ElevenLabs session directly from the user's gesture.
+  // One-tap auto-speak: the user's tap both reveals the ElevenLabs widget AND
+  // immediately starts the spoken greeting plus the browser microphone in the
+  // SAME gesture (autoplay and mic policies require a user gesture, so everything
+  // must start synchronously inside this tap handler). The full ElevenLabs call
+  // still starts from the widget's own button when the user wants it.
   const startCore = useCallback(() => {
-    if (elevenLabsActiveRef.current) {
-      setExpanded(true);
-      return;
-    }
     setExpanded(true);
     setError("");
     const widget = elevenLabsWidgetRef.current ?? document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
-    if (!widget || typeof widget.startConversation !== "function") {
-      setError("NEAS voice service is still loading. Please wait a moment and tap START VOICE again.");
+    if (!widget || !elevenLabsReady) {
+      setError("NEAS voice widget is still loading. Please wait a moment and tap TAP TO START again.");
       return;
     }
-    try {
-      const started = widget.startConversation();
-      if (started && typeof (started as Promise<unknown>).catch === "function") {
-        void (started as Promise<unknown>).catch(() => setError("Unable to start the NEAS voice session. Check microphone permission and try again."));
-      }
-    } catch {
-      setError("Unable to start the NEAS voice session. Check microphone permission and try again.");
+    elevenLabsActiveRef.current = true;
+    voiceEnabledRef.current = true;
+    setVoiceEnabled(true);
+    widget.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } } }));
+    // Mic first (cancels stale speech output), then the greeting. Barge-in stays
+    // active: talking over the greeting cancels it via the recognition handler.
+    if (!recognitionRef.current && !mediaRecorderRef.current) startListeningRef.current();
+    greetingActiveRef.current = true;
+    const greeted = speak("Welcome to NextEdge Access Solutions. I am NEAS AI Core. Please tell me how I can help.", () => {
+      setSpeaking(true);
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } } }));
+    }, () => {
+      setSpeaking(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } } }));
+      greetingActiveRef.current = false;
+      if (voiceEnabledRef.current && !recognitionRef.current && !busyRef.current) startListeningRef.current();
+    }, (message) => {
+      greetingActiveRef.current = false;
+      setError(message);
+      if (voiceEnabledRef.current && !recognitionRef.current && !busyRef.current) startListeningRef.current();
+    });
+    if (!greeted) {
+      greetingActiveRef.current = false;
+      setListening(true);
     }
-  }, []);
+  }, [elevenLabsReady]);
 
   const stopVoice = useCallback(() => {
-    const widget = elevenLabsWidgetRef.current ?? document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
-    try {
-      const ended = widget?.endConversation?.();
-      if (ended && typeof (ended as Promise<unknown>).catch === "function") {
-        void (ended as Promise<unknown>).catch(() => setError("The voice session could not be closed cleanly."));
-      }
-    } catch {
-      setError("The voice session could not be closed cleanly.");
-    }
+    // The widget owns its call lifecycle: end the call from the widget's own
+    // end-call button. Here we only stop our browser-voice fallbacks.
     elevenLabsActiveRef.current = false;
     voiceEnabledRef.current = false;
     setVoiceEnabled(false);

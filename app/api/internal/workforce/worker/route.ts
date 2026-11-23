@@ -25,19 +25,53 @@ type ExpiredTask = { id: string; attempt_count: number; max_attempts: number; wo
 
 const WORKER_ID = "neas-apex-shared-worker-v1";
 const SAFE_OPERATIONS = new Set(["summarize_internal", "draft_internal", "plan_tasks", "read_only_check"]);
+const GEMINI_WORKER_MODEL = (process.env.GEMINI_WORKER_MODEL ?? "gemini-2.5-flash-lite").trim() || "gemini-2.5-flash-lite";
+// LLM provider switch. "gemini" (default) works everywhere, including Vercel.
+// "lmstudio" targets any OpenAI-compatible local server (LM Studio default:
+// http://localhost:1234/v1) and therefore only works where the server can reach
+// that URL — local `next dev`, never Vercel builds. The ElevenLabs Convai widget
+// itself always talks to ElevenLabs cloud; this switch only changes the worker's
+// draft-inference backend (and can back local chat too).
 
 function unauthorized() {
   return NextResponse.json({ error: "Worker authorization failed." }, { status: 401, headers: { "Cache-Control": "no-store" } });
 }
 
+type WorkerLlmProvider = "gemini" | "lmstudio";
+
+function llmProvider(): WorkerLlmProvider {
+  return process.env.WORKER_LLM_PROVIDER?.trim().toLowerCase() === "lmstudio" ? "lmstudio" : "gemini";
+}
+
 function config() {
-  if (!getNeasWorkerConfigStatus(process.env).configured) throw new Error("Worker dependencies are not configured.");
+  const status = getNeasWorkerConfigStatus(process.env);
+  if (!status.configured) throw new Error("Worker dependencies are not configured: " + status.missing.join(", ") + ".");
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim().replace(/\/$/, "");
+  const provider = llmProvider();
+  if (provider === "lmstudio") {
+    const baseUrl = (process.env.LMSTUDIO_BASE_URL ?? "http://localhost:1234/v1").trim().replace(/\/$/, "");
+    const model = (process.env.LMSTUDIO_MODEL ?? "").trim();
+    if (!model) throw new Error("WORKER_LLM_PROVIDER=lmstudio requires LMSTUDIO_MODEL set to the loaded LM Studio model identifier.");
+    return {
+      url,
+      key: process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
+      cronSecret: process.env.CRON_SECRET!.trim(),
+      geminiKey: "",
+      provider,
+      lmBaseUrl: baseUrl,
+      lmModel: model,
+      lmApiKey: (process.env.LMSTUDIO_API_KEY ?? "lm-studio").trim() || "lm-studio",
+    };
+  }
   return {
     url,
     key: process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
     cronSecret: process.env.CRON_SECRET!.trim(),
     geminiKey: process.env.GEMINI_API_KEY!.trim(),
+    provider,
+    lmBaseUrl: "",
+    lmModel: "",
+    lmApiKey: "",
   };
 }
 
@@ -129,22 +163,33 @@ async function generateDraft(task: ClaimedTask): Promise<{ text: string; model: 
     "Return a clear, useful result with assumptions and missing information identified. Never fabricate evidence.",
   ].join("\n\n");
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+  const userPrompt = JSON.stringify({
+    task_title: task.title,
+    task_objective: task.objective,
+    operation,
+  });
+  if (c.provider === "lmstudio") {
+    return generateViaOpenAICompatible(c.lmBaseUrl, c.lmApiKey, c.lmModel, system, userPrompt);
+  }
+  return generateViaGemini(c.geminiKey, system, userPrompt);
+}
+
+async function generateViaGemini(apiKey: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(GEMINI_WORKER_MODEL) + ":generateContent", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": c.geminiKey },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts: [{ text: JSON.stringify({
-        task_title: task.title,
-        task_objective: task.objective,
-        operation,
-      }) }] }],
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
       generationConfig: { maxOutputTokens: 1200, temperature: 0.2 },
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(25_000),
   });
-  if (!response.ok) throw new Error("Gemini worker inference failed (" + response.status + ").");
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error("Gemini worker inference failed (" + response.status + "): " + detail.slice(0, 300));
+  }
   const payload = await response.json() as {
     modelVersion?: string;
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
@@ -152,7 +197,43 @@ async function generateDraft(task: ClaimedTask): Promise<{ text: string; model: 
   const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
   if (!text || payload.candidates?.[0]?.finishReason === "SAFETY") throw new Error("Gemini returned no usable task output.");
   if (text.length > 20_000) throw new Error("Gemini task output exceeded the storage limit.");
-  return { text, model: payload.modelVersion || "gemini-3.5-flash-lite" };
+  return { text, model: payload.modelVersion || GEMINI_WORKER_MODEL };
+}
+
+async function generateViaOpenAICompatible(baseUrl: string, apiKey: string, model: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
+  // LM Studio (and any OpenAI-compatible server): POST {baseUrl}/chat/completions.
+  let response: Response;
+  try {
+    response = await fetch(baseUrl + "/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 1200,
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(25_000),
+    });
+  } catch (cause) {
+    throw new Error("LM Studio server unreachable at " + baseUrl + ". Start LM Studio, load a model, and enable the local server. (" + (cause instanceof Error ? cause.message : String(cause)) + ")");
+  }
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error("LM Studio inference failed (" + response.status + "): " + detail.slice(0, 300));
+  }
+  const payload = await response.json() as {
+    model?: string;
+    choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }>;
+  };
+  const text = (payload.choices?.[0]?.message?.content ?? "").trim();
+  if (!text) throw new Error("LM Studio returned no usable task output.");
+  if (text.length > 20_000) throw new Error("LM Studio task output exceeded the storage limit.");
+  return { text, model: payload.model || model };
 }
 
 export async function GET(request: NextRequest) {
@@ -212,8 +293,9 @@ export async function GET(request: NextRequest) {
       },
     }).catch(() => null);
     return NextResponse.json({ worker: WORKER_ID, recovered: leaseRecovery.recovered, failedRecovered: leaseRecovery.failed, claimed: claimed.length, results }, { headers: { "Cache-Control": "no-store" } });
-  } catch {
-    return NextResponse.json({ error: "Workforce worker could not claim or process tasks." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Workforce worker could not claim or process tasks.";
+    return NextResponse.json({ error: "Workforce worker could not claim or process tasks.", detail: message.slice(0, 500) }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
 
