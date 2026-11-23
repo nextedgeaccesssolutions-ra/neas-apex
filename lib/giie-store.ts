@@ -120,6 +120,26 @@ export async function registerGiieSource(input: {
   return rows[0];
 }
 
+export function validateGiieSourceReview(input: {
+  termsReviewed: boolean;
+  robotsReviewed: boolean;
+  enabled: boolean;
+  quotaPerHour: number;
+  reviewNote: string;
+}): string {
+  if (!Number.isInteger(input.quotaPerHour) || input.quotaPerHour < 0 || input.quotaPerHour > 1000) {
+    throw new Error("GIIE source quota must be between 0 and 1000 items per hour.");
+  }
+  const reviewNote = input.reviewNote.trim();
+  if (reviewNote.length < 20 || reviewNote.length > 1000) {
+    throw new Error("A source terms and robots review note of 20–1000 characters is required.");
+  }
+  if (input.enabled && (!input.termsReviewed || !input.robotsReviewed || input.quotaPerHour < 1)) {
+    throw new Error("A GIIE source cannot be enabled until terms, robots policy, and a positive quota are reviewed.");
+  }
+  return reviewNote;
+}
+
 /** Owner attestation is recorded before a source can be enabled. */
 export async function reviewGiieSource(input: {
   id: string;
@@ -131,16 +151,7 @@ export async function reviewGiieSource(input: {
   reviewNote: string;
 }): Promise<GiieSourceRecord> {
   if (!/^[0-9a-f-]{36}$/i.test(input.id)) throw new Error("Invalid GIIE source ID.");
-  if (!Number.isInteger(input.quotaPerHour) || input.quotaPerHour < 0 || input.quotaPerHour > 1000) {
-    throw new Error("GIIE source quota must be between 0 and 1000 items per hour.");
-  }
-  const reviewNote = input.reviewNote.trim();
-  if (reviewNote.length < 20 || reviewNote.length > 1000) {
-    throw new Error("A source terms and robots review note of 20–1000 characters is required.");
-  }
-  if (input.enabled && (!input.termsReviewed || !input.robotsReviewed || input.quotaPerHour < 1)) {
-    throw new Error("A GIIE source cannot be enabled until terms, robots policy, and a positive quota are reviewed.");
-  }
+  const reviewNote = validateGiieSourceReview(input);
 
   const existingParams = new URLSearchParams({
     select: "id,metadata",
