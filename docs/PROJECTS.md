@@ -28,3 +28,11 @@ Last updated: 2026-11-24
 - [ ] Connect the Universal AI Router only after the server-side OpenRouter credential and router endpoints are configured.
 - [ ] Connect specialist tools only after the workforce APIs, scopes, approvals and audit contracts are verified.
 - [ ] No automatic merge or production deployment in this change.
+
+## NEAS AI runtime activation gate
+
+The APEX runtime must remain fail-closed until each privileged capability has a fresh, explicit evidence record. Environment-variable presence, a successful preview deployment, deterministic prompt routing, or a static security scan is not proof of live operation.
+
+Required evidence: authenticated identity; role/scope authorization; durable distributed rate limiting; durable append-only audit; persistent task storage; live model authentication and inference; live voice round-trip; specialist task execution and controlled tool contracts; GIIE search; GIIE ingestion; and GIIE semantic retrieval. Each item must be tested in the deployed environment, carry a verification timestamp and evidence reference, and expire after 15 minutes unless the verifier supplies a stricter window.
+
+The readiness evaluator in `lib/neas-api-security.ts` is an evidence gate only. It does not authenticate users, execute agents, validate provider credentials, or replace the underlying controls. New privileged routes remain blocked by `proxy.ts` unless individually reviewed and allowlisted.
