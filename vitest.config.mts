@@ -1,13 +1,16 @@
 import { defineConfig } from 'vitest/config';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   resolve: {
     alias: {
       // next/font/local only exists inside the Next compiler; pages that load
       // a scoped font (e.g. /design/console) get the stub's identical shape.
-      'next/font/local': path.resolve(__dirname, 'tests', 'stubs', 'next-font-local.ts'),
-      '@': path.resolve(__dirname, '.'),
+      'next/font/local': path.resolve(projectRoot, 'tests', 'stubs', 'next-font-local.ts'),
+      '@': path.resolve(projectRoot, '.'),
     },
   },
   // Pages/components use the automatic JSX runtime (no `import React`), same as
@@ -26,10 +29,10 @@ export default defineConfig({
     // time (lib/creds.ts), so tests must never see the operator's real file. Tests
     // that exercise the store point this at their own tmp path.
     env: {
-      GLADOS_ENV_LOCAL: path.resolve(__dirname, 'tests', '.env.local.does-not-exist'),
+      GLADOS_ENV_LOCAL: path.resolve(projectRoot, 'tests', '.env.local.does-not-exist'),
       // Hermetic data dir: the operator's Filming switch (.glados-mode) must never point
       // a test run at demo-data/. Tests that exercise the switch set their own file.
-      GLADOS_MODE_FILE: path.resolve(__dirname, 'tests', '.glados-mode.does-not-exist'),
+      GLADOS_MODE_FILE: path.resolve(projectRoot, 'tests', '.glados-mode.does-not-exist'),
       // A fresh clone defaults to the demo company (lib/paths.ts); tests see the
       // blank install unless they opt in.
       GLADOS_DEFAULT_MODE: 'real',
