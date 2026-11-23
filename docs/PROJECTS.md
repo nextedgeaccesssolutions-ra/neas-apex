@@ -85,3 +85,13 @@ Keep external communications, customer proposals/quotes, payments, purchases, co
 - The live probe is disabled unless `NEAS_LIVE_MODEL_VALIDATION_ENABLED=true`; a POST also requires explicit `confirmSpend: true`, uses a 24-token synthetic prompt, a 5–30 second timeout, a one-per-10-minute process-local throttle, and durable audit records.
 - The GET endpoint reports configured route metadata and auth mode only. It does not call a model and does not claim live validation.
 - No live inference request was made by this implementation; no model spend or secrets were used. A successful probe would validate connectivity only, not specialist quality, fallback behavior, tool execution, or production capacity.
+
+### NEAS APEX website voice bridge — implementation branch
+
+- The website voice widget now loads the official ElevenLabs Conversational AI web component and starts/stops its conversation from the existing NEAS AI Core orb and panel controls. Browser speech recognition/synthesis remains a fallback while the ElevenLabs widget is unavailable.
+- The website voice agent is `agent_8601m7zrgsg4f98srgkekzq7ana9` (Zero Retention Custom Mode). Its main branch is the 100% live branch.
+- Updated the live agent's allowed origins to include `www.nextedge-access-solutions.com`, `nextedge-access-solutions.com`, and the current NEAS APEX Vercel production hosts. Origin headers remain required; public authentication remains disabled for the embeddable widget.
+- Preserved voice recording off and Zero Retention Mode; enabled focus and prompt-injection guardrails. Updated the first message and prompt identity to NEAS AI Core and removed the obsolete Jordan persona.
+- Configured the branded NEAS navy/gold widget, transcript and text fallback, mic muting, and bounded file uploads. No ElevenLabs API key is exposed in the browser.
+- The voice agent currently has no connected tools (`tool_ids=[]`). It can converse and qualify enquiries, but it cannot submit leads, query CRM, or execute specialist tasks. The voice LLM is Gemini 3.5 Flash inside ElevenLabs and is separate from the APEX direct-Gemini chat route and the Vercel AI Gateway model probe.
+- No live conversation or paid voice/model test was initiated. Browser microphone permission, interruption, audio round-trip, and production-domain acceptance tests remain pending.
