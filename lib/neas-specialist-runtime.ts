@@ -23,8 +23,8 @@ export function routeNeasRuntimeSpecialist(text: string): NeasRuntimeSpecialistI
   const value = text.toLowerCase();
   const has = (...terms: string[]) => terms.some((term) => value.includes(term));
   if (has("risk assessment", "jsa", "jha", "method statement", "permit to work", "work at height", "confined space", "hse", "hseq", "safety", "rescue plan")) return "safety";
-  if (has("rope access", "irata", "rigging", "anchor point", "anchor bolt", "suspended access", "rope rescue", "ndt", "welding", "inspection", "engineering")) return "engineering";
   if (has("wind turbine", "wind farm", "solar", "renewable", "met mast", "blade inspection", "blade repair", "lidar", "photovoltaic", "offshore", "onshore")) return "renewable-energy";
+  if (has("rope access", "irata", "rigging", "anchor point", "anchor bolt", "suspended access", "rope rescue", "ndt", "welding", "inspection", "engineering")) return "engineering";
   if (has("boq", "quotation", "quote", "pricing", "costing", "budget", "invoice", "payment terms", "cash flow", "margin", "vat", "billing", "financial")) return "commercial";
   if (has("procurement", "supplier", "vendor", "purchase order", "inventory", "stock", "material specification", "delivery")) return "procurement";
   if (has("training", "gwo", "irata course", "competency", "assessment", "certification", "course", "trainee", "instructor")) return "training";
