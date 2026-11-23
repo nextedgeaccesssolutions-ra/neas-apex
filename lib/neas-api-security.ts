@@ -2,6 +2,9 @@ import type { NextRequest } from "next/server";
 
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
+// A process-local limiter is only a short-term guard, never a substitute for
+// a distributed limiter. Bound its memory use and fail closed at capacity.
+const MAX_RATE_LIMIT_BUCKETS = 10_000;
 
 export function isSameOriginBrowserRequest(request: NextRequest): boolean {
   const headers = request.headers;
@@ -30,6 +33,11 @@ export function consumeRateLimit(
   windowMs: number,
   now = Date.now(),
 ): { allowed: boolean; retryAfterSeconds: number } {
+  if (!namespace.trim()) throw new Error("Rate-limit namespace is required.");
+  if (!Number.isSafeInteger(limit) || limit < 1) throw new Error("Rate-limit limit must be a positive safe integer.");
+  if (!Number.isFinite(windowMs) || windowMs < 1) throw new Error("Rate-limit window must be a positive finite number.");
+  if (!Number.isFinite(now)) throw new Error("Rate-limit clock must be finite.");
+
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "unknown";
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || host;
   const key = `${namespace}:${ip}`;
@@ -47,6 +55,11 @@ export function consumeRateLimit(
   }
 
   if (!current || current.resetAt <= now) {
+    // Never evict a live bucket to make room: that would reset a client's
+    // quota. Reject new identities until expired entries can be reclaimed.
+    if (buckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+      return { allowed: false, retryAfterSeconds: 1 };
+    }
     buckets.set(key, { count: 1, resetAt: now + windowMs });
   } else {
     current.count += 1;
@@ -159,4 +172,3 @@ export function evaluateNeasRuntimeReadiness(
     reasons,
   };
 }
-
