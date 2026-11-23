@@ -86,6 +86,8 @@ export default function FreeVoiceAIWidget() {
   const voiceEnabledRef = useRef(false);
   const busyRef = useRef(false);
   const fallbackAfterRecognitionRef = useRef(false);
+  const greetingActiveRef = useRef(false);
+  const restartAfterGreetingRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -232,7 +234,7 @@ export default function FreeVoiceAIWidget() {
         const result = event.results[index];
         if (result.isFinal) transcript += result[0].transcript;
       }
-      if (transcript.trim()) void sendMessage(transcript);
+      if (transcript.trim() && !greetingActiveRef.current) void sendMessage(transcript);
     };
     recognition.onerror = (event) => {
       setListening(false);
@@ -244,7 +246,7 @@ export default function FreeVoiceAIWidget() {
         setError("Microphone permission was denied. Allow microphone access in your browser, then try again.");
       } else if (event.error !== "no-speech" && event.error !== "aborted") {
         setError(`Speech recognition error: ${event.error}`);
-      } else if (event.error === "no-speech") {
+      } else if (event.error === "no-speech" && !greetingActiveRef.current) {
         fallbackAfterRecognitionRef.current = true;
         setError("Browser recognition did not capture speech. Switching to microphone recording…");
       }
@@ -253,6 +255,10 @@ export default function FreeVoiceAIWidget() {
       setListening(false);
       window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: voiceEnabledRef.current } }));
       recognitionRef.current = null;
+      if (greetingActiveRef.current) {
+        restartAfterGreetingRef.current = true;
+        return;
+      }
       if (fallbackAfterRecognitionRef.current && !busyRef.current) {
         fallbackAfterRecognitionRef.current = false;
         void startRecordingFallback();
@@ -270,29 +276,49 @@ export default function FreeVoiceAIWidget() {
     }
   }, [listening, pending, sendMessage, startRecordingFallback]);
 
-  // One deliberate tap unlocks browser audio, plays the welcome, then requests
-  // microphone access and starts listening. Replies are spoken automatically.
+  // Start microphone recognition inside the real tap gesture. Starting it
+  // only after speechSynthesis.onend can lose browser user activation.
   const startCore = useCallback(() => {
     setExpanded(true);
     setError("");
     voiceEnabledRef.current = true;
     setVoiceEnabled(true);
+    greetingActiveRef.current = true;
+    restartAfterGreetingRef.current = false;
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (Recognition) startListening();
+
     const welcome = "Welcome to NextEdge Access Solutions. I am NEAS AI Core, your intelligent business and engineering assistant. I can help with rope access, renewable energy, offshore and onshore operations, power plants, project delivery, safety, commercial proposals, and business development. I am ready. Please tell me how I can help.";
+    let welcomeFinished = false;
+    const finishWelcome = () => {
+      if (welcomeFinished) return;
+      welcomeFinished = true;
+      greetingActiveRef.current = false;
+      setSpeaking(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+      if (Recognition) {
+        if (restartAfterGreetingRef.current || !recognitionRef.current) {
+          restartAfterGreetingRef.current = false;
+          startListening();
+        }
+      } else {
+        void startRecordingFallback();
+      }
+    };
     const started = speak(
       welcome,
       () => {
         setSpeaking(true);
         window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } }));
       },
-      () => {
-        setSpeaking(false);
-        window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
-        startListening();
+      finishWelcome,
+      (message) => {
+        setError(message);
+        finishWelcome();
       },
-      (message) => setError(message),
     );
-    if (!started) startListening();
-  }, [startListening]);
+    if (!started) finishWelcome();
+  }, [startListening, startRecordingFallback]);
 
   const stopVoice = useCallback(() => {
     voiceEnabledRef.current = false;
