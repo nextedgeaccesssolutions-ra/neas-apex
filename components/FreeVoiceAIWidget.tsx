@@ -504,7 +504,9 @@ export default function FreeVoiceAIWidget() {
         "start-call-text": "Start voice conversation",
         "end-call-text": "End voice conversation",
         dismissible: "true",
-        style: { display: "none" },
+        // Keep the custom element mounted and rendered so its WebRTC/audio lifecycle can start.
+        // The visible NEAS panel owns the controls; the vendor widget remains visually hidden.
+        style: { position: "fixed", left: "-10000px", bottom: 0, width: "1px", height: "1px", opacity: 0, overflow: "hidden", pointerEvents: "none" },
       })}
       <section style={panelStyle} aria-label="NEAS AI Core voice conversation">
       <style>{`
