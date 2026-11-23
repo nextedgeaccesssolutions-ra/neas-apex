@@ -1,0 +1,44 @@
+# Dependabot: keep npm packages and GitHub Actions fresh on a safe cadence.
+# - Patch + minor npm updates are grouped into one weekly PR.
+# - Major npm updates are grouped separately and NEVER auto-merged (human review).
+# - Node itself is pinned to 22 (.node-version + engines); majors need intent.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Asia/Manila"
+    groups:
+      neas-minor-patch:
+        patterns: ["*"]
+        exclude-patterns: []
+        # Dependabot still splits majors out of groups by default when
+        # grouped-update types are unspecified; the automerge workflow below
+        # additionally only merges version-update:semver-patch.
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "automation"]
+    commit-message:
+      prefix: "chore(deps)"
+    # Do not touch these without human review: runtime + security boundary.
+    ignore:
+      - dependency-name: "node"
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Asia/Manila"
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "automation"]
+    commit-message:
+      prefix: "chore(actions)"
