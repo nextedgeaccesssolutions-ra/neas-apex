@@ -113,7 +113,7 @@ values
 ('Training and Human Capital','training:workforce','Workforce development and performance support','Tracks development plans, training needs, performance indicators and succession readiness.','Use fair, evidence-based criteria; do not make final employment decisions.',60,'["AI-generated support only; verify material facts against authoritative evidence.","No external communication, publication, purchase, payment, contract acceptance or production mutation without explicit human approval.","No safety-critical authorization, permit approval, engineering certification, legal opinion, financial filing or competency certification.","Protect personal, confidential and commercially sensitive information; apply least privilege and retention rules.","Record assumptions, source provenance, uncertainty and escalation requirements."]'::jsonb)
 on conflict(skill_key) do update set category=excluded.category,name=excluded.name,description=excluded.description,
  operating_guidance=excluded.operating_guidance,priority=excluded.priority,guardrails=excluded.guardrails,
- version=public.aiw_skill_catalog.version+1,updated_at=now();
+ version=greatest(public.aiw_skill_catalog.version,excluded.version),updated_at=now();
 
 create or replace function public.aiw_auto_assign_department_skills()
 returns trigger
