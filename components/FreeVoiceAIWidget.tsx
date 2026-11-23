@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { createElement, useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import Script from "next/script";
 import EngineeringAITaskEngine, { type SpecialistId } from "./EngineeringAITaskEngine";
 import EngineeringAIWelcome from "./EngineeringAIWelcome";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string; agent?: string };
 type AudioInput = { mimeType: string; data: string };
+type ElevenLabsWidgetElement = HTMLElement & { startConversation?: () => Promise<unknown> | void; endConversation?: () => Promise<unknown> | void };
+const NEAS_ELEVENLABS_AGENT_ID = process.env.NEXT_PUBLIC_NEAS_ELEVENLABS_AGENT_ID || "agent_8601m7zrgsg4f98srgkekzq7ana9";
 type RecognitionAlternative = { transcript: string };
 type RecognitionResult = { isFinal: boolean; 0: RecognitionAlternative };
 type RecognitionEvent = Event & { resultIndex: number; results: ArrayLike<RecognitionResult> };
@@ -78,12 +81,15 @@ export default function FreeVoiceAIWidget() {
   const [recognitionSupported, setRecognitionSupported] = useState(false);
   const [audioCaptureSupported, setAudioCaptureSupported] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [elevenLabsReady, setElevenLabsReady] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<RecognitionInstance | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const voiceEnabledRef = useRef(false);
+  const elevenLabsActiveRef = useRef(false);
+  const elevenLabsWidgetRef = useRef<ElevenLabsWidgetElement | null>(null);
   const busyRef = useRef(false);
   const fallbackAfterRecognitionRef = useRef(false);
   const greetingActiveRef = useRef(false);
@@ -99,6 +105,45 @@ export default function FreeVoiceAIWidget() {
       if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       window.speechSynthesis?.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let widget: ElevenLabsWidgetElement | null = null;
+    const onConversationStarted = () => {
+      elevenLabsActiveRef.current = true;
+      voiceEnabledRef.current = true;
+      setVoiceEnabled(true);
+      setListening(true);
+      setSpeaking(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: true, enabled: true } }));
+    };
+    const onConversationEnded = () => {
+      elevenLabsActiveRef.current = false;
+      voiceEnabledRef.current = false;
+      setVoiceEnabled(false);
+      setListening(false);
+      setSpeaking(false);
+      window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: false } }));
+      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+    };
+    const attach = async () => {
+      await customElements.whenDefined("elevenlabs-convai");
+      if (cancelled) return;
+      widget = document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
+      if (!widget) return;
+      elevenLabsWidgetRef.current = widget;
+      setElevenLabsReady(typeof widget.startConversation === "function");
+      widget.addEventListener("conversationStarted", onConversationStarted);
+      widget.addEventListener("conversationEnded", onConversationEnded);
+    };
+    void attach();
+    return () => {
+      cancelled = true;
+      widget?.removeEventListener("conversationStarted", onConversationStarted);
+      widget?.removeEventListener("conversationEnded", onConversationEnded);
+      elevenLabsWidgetRef.current = null;
     };
   }, []);
 
@@ -200,7 +245,7 @@ export default function FreeVoiceAIWidget() {
       if (buffer.trim()) consumeEvent(buffer);
       const finalReply = reply.trim();
       if (!finalReply) throw new Error("NEAS AI returned an empty response. Please retry.");
-      if (voiceEnabledRef.current) speak(finalReply, () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }, (message) => setError(message));
+      if (voiceEnabledRef.current && !elevenLabsActiveRef.current) speak(finalReply, () => { setSpeaking(true); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } })); }, () => { setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }, (message) => setError(message));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to reach the free AI service.");
     } finally {
@@ -209,7 +254,7 @@ export default function FreeVoiceAIWidget() {
       window.dispatchEvent(new CustomEvent("neas-ai-processing", { detail: { processing: false } }));
       // Keep the one-tap voice session armed after each answer, including browsers
       // that terminate a continuous SpeechRecognition session between turns.
-      if (voiceEnabledRef.current && !recognitionRef.current && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
+      if (voiceEnabledRef.current && !elevenLabsActiveRef.current && !recognitionRef.current && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
         window.setTimeout(() => { if (voiceEnabledRef.current && !recognitionRef.current && !busyRef.current) startListeningRef.current(); }, 180);
       }
     }
@@ -345,59 +390,42 @@ export default function FreeVoiceAIWidget() {
   // Start microphone recognition inside the real tap gesture. Starting it
   // only after speechSynthesis.onend can lose browser user activation.
   const startCore = useCallback(() => {
-    // The central orb and the panel CTA share this single voice-session owner.
-    // Ignore duplicate start events while a session is already active.
-    if (voiceEnabledRef.current) {
+    if (elevenLabsActiveRef.current) {
       setExpanded(true);
       return;
     }
     setExpanded(true);
     setError("");
-    voiceEnabledRef.current = true;
-    setVoiceEnabled(true);
-    greetingActiveRef.current = true;
-    restartAfterGreetingRef.current = false;
-    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (Recognition) startListening();
-
-    const welcome = "Welcome to NextEdge Access Solutions. I am NEAS AI Core, your intelligent business and engineering assistant. I can help with rope access, renewable energy, offshore and onshore operations, power plants, project delivery, safety, commercial proposals, and business development. I am ready. Please tell me how I can help.";
-    let welcomeFinished = false;
-    const finishWelcome = () => {
-      if (welcomeFinished) return;
-      welcomeFinished = true;
-      greetingActiveRef.current = false;
-      setSpeaking(false);
-      window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
-      if (Recognition) {
-        if (restartAfterGreetingRef.current || !recognitionRef.current) {
-          restartAfterGreetingRef.current = false;
-          startListening();
-        }
-      } else {
-        void startRecordingFallback();
+    const widget = elevenLabsWidgetRef.current ?? document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
+    if (!widget || typeof widget.startConversation !== "function") {
+      setError("NEAS voice service is still loading. Please wait a moment and tap START VOICE again.");
+      return;
+    }
+    try {
+      const started = widget.startConversation();
+      if (started && typeof (started as Promise<unknown>).catch === "function") {
+        void (started as Promise<unknown>).catch(() => setError("Unable to start the NEAS voice session. Check microphone permission and try again."));
       }
-    };
-    const started = speak(
-      welcome,
-      () => {
-        setSpeaking(true);
-        window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: true } }));
-      },
-      finishWelcome,
-      (message) => {
-        setError(message);
-        finishWelcome();
-      },
-    );
-    if (!started) finishWelcome();
-  }, [startListening, startRecordingFallback]);
+    } catch {
+      setError("Unable to start the NEAS voice session. Check microphone permission and try again.");
+    }
+  }, []);
 
   const stopVoice = useCallback(() => {
+    const widget = elevenLabsWidgetRef.current ?? document.getElementById("neas-elevenlabs-voice") as ElevenLabsWidgetElement | null;
+    try {
+      const ended = widget?.endConversation?.();
+      if (ended && typeof (ended as Promise<unknown>).catch === "function") {
+        void (ended as Promise<unknown>).catch(() => setError("The voice session could not be closed cleanly."));
+      }
+    } catch {
+      setError("The voice session could not be closed cleanly.");
+    }
+    elevenLabsActiveRef.current = false;
     voiceEnabledRef.current = false;
     setVoiceEnabled(false);
     setListening(false);
-    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: false } }));
-    window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
+    setSpeaking(false);
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
@@ -406,7 +434,8 @@ export default function FreeVoiceAIWidget() {
     mediaStreamRef.current = null;
     setRecording(false);
     window.speechSynthesis?.cancel();
-    setSpeaking(false);
+    window.dispatchEvent(new CustomEvent("neas-ai-voice-state", { detail: { listening: false, enabled: false } }));
+    window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } }));
   }, []);
 
   useEffect(() => {
@@ -423,8 +452,12 @@ export default function FreeVoiceAIWidget() {
   }, [startCore, stopVoice]);
 
   const enableVoiceOutput = () => {
-    setError("");
-    const started = speak("NEAS AI voice output is now active. I will speak my replies.", () => {
+    if (elevenLabsReady) {
+      startCore();
+      return;
+    }
+    setError("NEAS ElevenLabs voice is loading. You can use the browser microphone fallback below.");
+    const started = speak("Welcome to NextEdge Access Solutions. I am NEAS AI Core. Please tell me how I can help.", () => {
       voiceEnabledRef.current = true;
       setVoiceEnabled(true);
       setSpeaking(true);
@@ -454,7 +487,27 @@ export default function FreeVoiceAIWidget() {
   const statusText = pending ? "THINKING" : recording ? "RECORDING" : listening ? "LISTENING" : speaking ? "SPEAKING" : voiceEnabled ? "VOICE READY" : "STANDBY";
 
   return (
-    <section style={panelStyle} aria-label="NEAS AI Core voice conversation">
+    <>
+      <Script
+        src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+        strategy="afterInteractive"
+        onError={() => setError("The NEAS voice widget could not be loaded. Check the connection and try again.")}
+      />
+      {createElement("elevenlabs-convai", {
+        id: "neas-elevenlabs-voice",
+        "agent-id": NEAS_ELEVENLABS_AGENT_ID,
+        variant: "expanded",
+        "server-location": "global",
+        "avatar-image-url": "https://www.nextedge-access-solutions.com/neas-ai-avatar.webp",
+        "avatar-orb-color-1": "#CA9332",
+        "avatar-orb-color-2": "#EBC07E",
+        "action-text": "Talk to NEAS AI",
+        "start-call-text": "Start voice conversation",
+        "end-call-text": "End voice conversation",
+        dismissible: "true",
+        style: { display: "none" },
+      })}
+      <section style={panelStyle} aria-label="NEAS AI Core voice conversation">
       <style>{`
         .neas-ai-core-launch { position:relative; isolation:isolate; overflow:hidden; animation:neasCorePulse 2.8s ease-in-out infinite; box-shadow:0 0 0 0 rgba(235,192,126,.42),0 0 18px rgba(202,147,50,.2); transition:transform .2s ease,box-shadow .2s ease; }
         .neas-ai-core-launch::after { content:""; position:absolute; inset:-40% auto -40% -55%; width:38%; transform:skewX(-22deg); background:rgba(255,255,255,.42); animation:neasCoreSweep 3.6s ease-in-out infinite; pointer-events:none; }
@@ -466,7 +519,7 @@ export default function FreeVoiceAIWidget() {
       <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid rgba(202,147,50,.2)", background: "linear-gradient(100deg,rgba(202,147,50,.12),rgba(7,29,41,.1))" }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 10, letterSpacing: ".18em", color: "#EBC07E", fontWeight: 800 }}>NEAS ENGINEERING AI</div>
-          <div style={{ fontSize: 9, color: "rgba(245,242,234,.52)", marginTop: 3 }}>Specialist agents · Browser voice · Text & image</div>
+          <div style={{ fontSize: 9, color: "rgba(245,242,234,.52)", marginTop: 3 }}>ElevenLabs voice · NEAS AI text & image</div>
         </div>
         <span aria-live="polite" style={{ fontSize: 8, letterSpacing: ".12em", color: error ? "#fca5a5" : listening ? "#86efac" : "#EBC07E" }}>{error ? "ERROR" : statusText}</span>
         <button type="button" onClick={() => expanded ? setExpanded(false) : startCore()} aria-label={expanded ? "Collapse NEAS AI panel" : "Start NEAS AI Core with voice welcome"} className="neas-ai-core-launch" style={{ border: "1px solid rgba(202,147,50,.55)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 999, padding: expanded ? "7px 11px" : "9px 15px", cursor: "pointer", fontSize: 9, fontWeight: 900, letterSpacing: ".12em", whiteSpace: "nowrap" }}>{expanded ? "CLOSE" : "✦ TAP TO START"}</button>
@@ -492,21 +545,22 @@ export default function FreeVoiceAIWidget() {
             <button type="submit" disabled={pending || (!input.trim() && !photo)} style={{ border: "1px solid rgba(202,147,50,.35)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 8, padding: "8px 11px", fontSize: 10, fontWeight: 900, opacity: pending || (!input.trim() && !photo) ? .45 : 1, cursor: "pointer" }}>SEND</button>
           </form>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {(recognitionSupported || audioCaptureSupported) && !listening && !recording && <button type="button" disabled={pending} onClick={startListening} style={{ border: "1px solid rgba(202,147,50,.35)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 9, padding: "9px 11px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>🎙 {recognitionSupported ? "SPEAK" : "RECORD VOICE"}</button>}
-            {listening && <button type="button" onClick={() => recognitionRef.current?.stop()} style={{ border: "1px solid rgba(248,113,113,.45)", color: "#fca5a5", background: "transparent", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP LISTENING</button>}
-            {recording && <button type="button" onClick={() => mediaRecorderRef.current?.stop()} style={{ border: "1px solid rgba(248,113,113,.45)", color: "#fca5a5", background: "transparent", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP RECORDING</button>}
-            {!voiceEnabled && <button type="button" onClick={enableVoiceOutput} style={{ border: "1px solid rgba(202,147,50,.35)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>ENABLE VOICE</button>}
+            {!elevenLabsReady && (recognitionSupported || audioCaptureSupported) && !listening && !recording && <button type="button" disabled={pending} onClick={startListening} style={{ border: "1px solid rgba(202,147,50,.35)", background: "linear-gradient(135deg,#CA9332,#EBC07E)", color: "#071D29", borderRadius: 9, padding: "9px 11px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>🎙 {recognitionSupported ? "SPEAK" : "RECORD VOICE"}</button>}
+            {listening && !elevenLabsReady && <button type="button" onClick={() => recognitionRef.current?.stop()} style={{ border: "1px solid rgba(248,113,113,.45)", color: "#fca5a5", background: "transparent", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP LISTENING</button>}
+            {recording && !elevenLabsReady && <button type="button" onClick={() => mediaRecorderRef.current?.stop()} style={{ border: "1px solid rgba(248,113,113,.45)", color: "#fca5a5", background: "transparent", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP RECORDING</button>}
+            {!voiceEnabled && <button type="button" onClick={enableVoiceOutput} style={{ border: "1px solid rgba(202,147,50,.35)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>{elevenLabsReady ? "START ELEVENLABS VOICE" : "ENABLE DEVICE VOICE"}</button>}
             {voiceEnabled && <button type="button" onClick={stopVoice} style={{ border: "1px solid rgba(202,147,50,.35)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>VOICE OFF</button>}
-            <button type="button" onClick={() => { window.speechSynthesis?.cancel(); setSpeaking(false); window.dispatchEvent(new CustomEvent("neas-ai-speaking", { detail: { speaking: false } })); }} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP AUDIO</button>
+            <button type="button" onClick={stopVoice} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>STOP VOICE</button>
             <button type="button" onClick={() => fileRef.current?.click()} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>ATTACH IMAGE</button>
             <button type="button" onClick={() => { stopVoice(); setMessages([]); setInput(""); setPhoto(null); setError(""); }} style={{ border: "1px solid rgba(202,147,50,.25)", color: "#EBC07E", background: "rgba(7,29,41,.72)", borderRadius: 9, padding: "9px 11px", fontSize: 10, cursor: "pointer" }}>NEW CHAT</button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) { if (file.size > 3 * 1024 * 1024) setError("Images must be 3 MB or smaller."); else setPhoto(file); } event.currentTarget.value = ""; }} />
           </div>
           <div style={{ color: "rgba(245,242,234,.42)", fontSize: 8, lineHeight: 1.45 }}>
-            Microphone input uses browser speech recognition or recorded-audio transcription. Spoken replies use your device's built-in speech engine. Enable VOICE separately once to authorize audible replies; microphone recording alone does not enable speaker output. Do not submit confidential project or personal data to free-tier AI services.
+            Voice conversations use the NEAS Zero Retention ElevenLabs agent. Text and image requests in this panel use the NEAS APEX Gemini chat route. Microphone access requires HTTPS and browser permission. Do not submit confidential project or personal data unless the service is approved for that data.
           </div>
         </div>
       )}
-    </section>
+      </section>
+    </>
   );
 }
