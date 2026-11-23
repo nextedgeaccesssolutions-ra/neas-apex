@@ -127,10 +127,10 @@ function Core({ state, variant, corner = false, bigDock = false }) {
   const ballsRef = useRef([])
   const st = normalizeState(state)
 
-  const sprite = useMemo(makeSprite, [])
+  const sprite = useMemo(() => makeSprite(), [])
   const geoIco = useMemo(() => new THREE.IcosahedronGeometry(1.0, 2), [])
   const geoSphere = useMemo(() => new THREE.SphereGeometry(1.0, 16, 11), [])
-  const tmp = useMemo(() => ({ mWorld: new THREE.Vector3(), mLocal: new THREE.Vector3(), inv: new THREE.Quaternion(), cw: new THREE.Vector3(), cl: new THREE.Vector3(), clSmooth: new THREE.Vector3(), lag: new THREE.Vector3(), perp: new THREE.Vector3(), v: new THREE.Vector3(), w: new THREE.Vector3(), targets: [], assign: [], tick: 0 }), [])
+  const tmpRef = useRef(null)
 
   const ringData = useMemo(() => [
     { r: 0.74, tube: 0.03, tilt: [0.5, 0.2, 0],    spin: 0.55,  ballSpeed: 1.4, phase: 0 },
@@ -168,6 +168,10 @@ function Core({ state, variant, corner = false, bigDock = false }) {
   const calmCarryRef = useRef(0)
 
   useFrame((frame, dt) => {
+    if (tmpRef.current === null) {
+      tmpRef.current = { mWorld: new THREE.Vector3(), mLocal: new THREE.Vector3(), inv: new THREE.Quaternion(), cw: new THREE.Vector3(), cl: new THREE.Vector3(), clSmooth: new THREE.Vector3(), lag: new THREE.Vector3(), perp: new THREE.Vector3(), v: new THREE.Vector3(), w: new THREE.Vector3(), targets: [], assign: [], tick: 0 }
+    }
+    const tmp = tmpRef.current
     // [perf] Tier B Step 1: while a reply streams / Apex speaks, halve the per-frame particle work (skip
     // every other frame) so the main thread stops starving the WS audio-delivery queue. Two guards keep
     // the throttle from reading as a FROZEN orb (Ruben saw the ball stop mid-way through long replies):
@@ -192,7 +196,8 @@ function Core({ state, variant, corner = false, bigDock = false }) {
     const spread = spreadRef.current
 
     const { dir, coreR, shellR, phase, speed, armT, ballR } = data
-    const pos = positions
+    const pos = points.current?.geometry?.attributes?.position?.array
+    if (!pos) return
 
     // ===== PARTICLES variant: state-driven bubbling ball (arm to be re-implemented later) =====
     // Kept deliberately lean â€” no per-frame matrix/cursor work â€” so it never starves the
