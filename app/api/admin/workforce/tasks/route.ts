@@ -103,8 +103,9 @@ function validIdempotencyKey(value: unknown): value is string {
 
 export async function GET(request: NextRequest) {
   const principal = resolveNeasAdminPrincipalFromRequest(request);
+  if (!principal) return jsonError("Authentication required.", 401);
   const authorization = authorizeNeasScope(principal, "workforce:tasks:read");
-  if (!authorization.allowed) return jsonError("Authentication required.", 401);
+  if (!authorization.allowed) return jsonError("Insufficient workforce task permissions.", 403);
 
   try {
     const rows = await supabaseRequest<TaskRow[]>(
@@ -128,8 +129,9 @@ export async function POST(request: NextRequest) {
   if (!isSameOriginBrowserRequest(request)) return jsonError("Request not permitted.", 403);
 
   const principal = resolveNeasAdminPrincipalFromRequest(request);
+  if (!principal) return jsonError("Authentication required.", 401);
   const authorization = authorizeNeasScope(principal, "workforce:tasks:submit");
-  if (!authorization.allowed) return jsonError("Authentication required.", 401);
+  if (!authorization.allowed) return jsonError("Insufficient workforce task permissions.", 403);
 
   const rate = consumeRateLimit(request, "neas-workforce-task-submit", 20, 10 * 60 * 1000);
   if (!rate.allowed) {
