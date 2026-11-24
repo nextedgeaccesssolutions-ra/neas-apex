@@ -48,7 +48,9 @@ describe("NEAS APEX workflow safety", () => {
   });
 
   it("omits empty Dependabot exclude-patterns that violate the schema", () => {
-    expect(dependabotConfig).not.toMatch(/^\s*exclude-patterns:\s*\[\s*\]\s*$/m);
+    expect(dependabotConfig).not.toMatch(
+      /^\s*exclude-patterns:\s*\[\s*\]\s*$/m,
+    );
   });
 
   it("keeps the scheduled production probe on a valid five-field cron expression", () => {
