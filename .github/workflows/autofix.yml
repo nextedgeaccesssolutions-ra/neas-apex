@@ -14,7 +14,7 @@ on:
     branches: ["main"]
   schedule:
     # Every 30 minutes, production probe (runs on default branch).
-    - cron: "*/30 * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
