@@ -7,6 +7,7 @@ const read = (path: string) =>
 
 const autofix = read(".github/workflows/autofix.yml");
 const dependency = read(".github/workflows/dependency-automerge.yml");
+const dependabotConfig = read(".github/dependabot.yml");
 const widget = read("components/FreeVoiceAIWidget.tsx");
 
 describe("NEAS APEX workflow safety", () => {
@@ -31,7 +32,7 @@ describe("NEAS APEX workflow safety", () => {
   });
 
   it("scopes issue-write access to the production probe and supplies repository context", () => {
-    expect(autofix).toContain("permissions:\n  contents: read\n\nconcurrency:");
+    expect(autofix).toContain("permissions:\\n  contents: read\\n\\nconcurrency:");
     expect(autofix).toContain("      issues: write");
     expect(autofix).toContain('gh issue list --repo "$GITHUB_REPOSITORY"');
     expect(autofix).toContain(
@@ -46,11 +47,15 @@ describe("NEAS APEX workflow safety", () => {
     expect(dependency).not.toContain("gh pr merge --auto");
   });
 
+  it("omits empty Dependabot exclude-patterns that violate the schema", () => {
+    expect(dependabotConfig).not.toMatch(/^\\s*exclude-patterns:\\s*\\[\\s*\\]\\s*$/m);
+  });
+
   it("keeps the scheduled production probe on a valid five-field cron expression", () => {
     const schedule = autofix.match(
-      /^\s*-\s*cron:\s*["']([^"']+)["']\s*$/m,
+      /^\\s*-\\s*cron:\\s*["']([^"']+)["']\\s*$/m,
     )?.[1];
     expect(schedule).toBe("*/30 * * * *");
-    expect(schedule?.trim().split(/\s+/)).toHaveLength(5);
+    expect(schedule?.trim().split(/\\s+/)).toHaveLength(5);
   });
 });
