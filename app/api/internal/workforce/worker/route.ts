@@ -227,6 +227,13 @@ async function listGeminiModels(apiKey: string): Promise<string[]> {
     .filter((id) => id.length > 0);
 }
 
+function isModelUnavailable(status: number): boolean {
+  // 404/400: the id is retired or rejected. 429/5xx: the model is temporarily
+  // unavailable (capacity spikes return 503 UNAVAILABLE). Either way, try the
+  // next candidate instead of spending the task's retry budget on one model.
+  return status === 400 || status === 404 || status === 429 || status >= 500;
+}
+
 async function generateViaGemini(apiKey: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
   const attempted: string[] = [];
   const candidates = [...new Set([GEMINI_WORKER_MODEL, ...GEMINI_MODEL_PREFERENCE])];
@@ -240,9 +247,7 @@ async function generateViaGemini(apiKey: string, system: string, userPrompt: str
       return await tryModel(model);
     } catch (error) {
       lastError = error as Error;
-      // 404 = retired/unknown model, 400 = rejected model id. Anything else is a
-      // real inference failure and must surface instead of burning retries.
-      if (!(error instanceof GeminiModelError) || (error.status !== 404 && error.status !== 400)) throw error;
+      if (!(error instanceof GeminiModelError) || !isModelUnavailable(error.status)) throw error;
     }
   }
   const available = await listGeminiModels(apiKey);
@@ -255,7 +260,7 @@ async function generateViaGemini(apiKey: string, system: string, userPrompt: str
       return await tryModel(discovered[0]);
     } catch (error) {
       lastError = error as Error;
-      if (!(error instanceof GeminiModelError) || (error.status !== 404 && error.status !== 400)) throw error;
+      if (!(error instanceof GeminiModelError) || !isModelUnavailable(error.status)) throw error;
     }
   }
   throw new Error(
