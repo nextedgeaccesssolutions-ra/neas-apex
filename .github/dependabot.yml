@@ -14,7 +14,6 @@ updates:
     groups:
       neas-minor-patch:
         patterns: ["*"]
-        exclude-patterns: []
         # Dependabot splits major updates out when grouped-update types are
         # unspecified. The repository dependency workflow requests independent
         # human review and never auto-merges.
