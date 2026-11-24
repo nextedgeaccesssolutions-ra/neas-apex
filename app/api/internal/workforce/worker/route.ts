@@ -25,7 +25,8 @@ type ExpiredTask = { id: string; attempt_count: number; max_attempts: number; wo
 
 const WORKER_ID = "neas-apex-shared-worker-v1";
 const SAFE_OPERATIONS = new Set(["summarize_internal", "draft_internal", "plan_tasks", "read_only_check"]);
-const GEMINI_WORKER_MODEL = (process.env.GEMINI_WORKER_MODEL ?? "gemini-2.5-flash-lite").trim() || "gemini-2.5-flash-lite";
+const GEMINI_MODEL_PREFERENCE = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"];
+const GEMINI_WORKER_MODEL = (process.env.GEMINI_WORKER_MODEL ?? GEMINI_MODEL_PREFERENCE[0]).trim() || GEMINI_MODEL_PREFERENCE[0];
 // LLM provider switch. "gemini" (default) works everywhere, including Vercel.
 // "lmstudio" targets any OpenAI-compatible local server (LM Studio default:
 // http://localhost:1234/v1) and therefore only works where the server can reach
@@ -174,8 +175,14 @@ async function generateDraft(task: ClaimedTask): Promise<{ text: string; model: 
   return generateViaGemini(c.geminiKey, system, userPrompt);
 }
 
-async function generateViaGemini(apiKey: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(GEMINI_WORKER_MODEL) + ":generateContent", {
+class GeminiModelError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+async function requestGeminiDraft(apiKey: string, model: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
@@ -188,7 +195,7 @@ async function generateViaGemini(apiKey: string, system: string, userPrompt: str
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new Error("Gemini worker inference failed (" + response.status + "): " + detail.slice(0, 300));
+    throw new GeminiModelError(response.status, "Gemini worker inference failed (" + response.status + ") on " + model + ": " + detail.slice(0, 300));
   }
   const payload = await response.json() as {
     modelVersion?: string;
@@ -197,7 +204,65 @@ async function generateViaGemini(apiKey: string, system: string, userPrompt: str
   const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
   if (!text || payload.candidates?.[0]?.finishReason === "SAFETY") throw new Error("Gemini returned no usable task output.");
   if (text.length > 20_000) throw new Error("Gemini task output exceeded the storage limit.");
-  return { text, model: payload.modelVersion || GEMINI_WORKER_MODEL };
+  return { text, model: payload.modelVersion || model };
+}
+
+// The provider retires model IDs without notice (e.g. gemini-2.5-flash-lite now
+// returns 404). Never strand the queue on one hardcoded ID: try the configured
+// model, then the current preference list, then whatever the account can actually
+// call via ListModels.
+async function listGeminiModels(apiKey: string): Promise<string[]> {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", {
+    headers: { "x-goog-api-key": apiKey },
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) return [];
+  const payload = await response.json().catch(() => null) as {
+    models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
+  } | null;
+  return (payload?.models ?? [])
+    .filter((entry) => entry.supportedGenerationMethods?.includes("generateContent"))
+    .map((entry) => String(entry.name ?? "").replace(/^models\//, ""))
+    .filter((id) => id.length > 0);
+}
+
+async function generateViaGemini(apiKey: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
+  const attempted: string[] = [];
+  const candidates = [...new Set([GEMINI_WORKER_MODEL, ...GEMINI_MODEL_PREFERENCE])];
+  let lastError: Error | null = null;
+  const tryModel = async (model: string) => {
+    attempted.push(model);
+    return await requestGeminiDraft(apiKey, model, system, userPrompt);
+  };
+  for (const model of candidates) {
+    try {
+      return await tryModel(model);
+    } catch (error) {
+      lastError = error as Error;
+      // 404 = retired/unknown model, 400 = rejected model id. Anything else is a
+      // real inference failure and must surface instead of burning retries.
+      if (!(error instanceof GeminiModelError) || (error.status !== 404 && error.status !== 400)) throw error;
+    }
+  }
+  const available = await listGeminiModels(apiKey);
+  const discovered = [
+    ...GEMINI_MODEL_PREFERENCE.filter((id) => available.includes(id)),
+    ...available.filter((id) => /flash/.test(id) && !/preview|tts|live|image|transcribe/.test(id)),
+  ].filter((id: string) => !attempted.includes(id));
+  if (discovered.length) {
+    try {
+      return await tryModel(discovered[0]);
+    } catch (error) {
+      lastError = error as Error;
+      if (!(error instanceof GeminiModelError) || (error.status !== 404 && error.status !== 400)) throw error;
+    }
+  }
+  throw new Error(
+    "Gemini worker inference failed: no usable model. Tried " + attempted.join(", ")
+      + (available.length ? ". Account exposes: " + available.slice(0, 12).join(", ") + "." : ".")
+      + (lastError ? " Last error: " + lastError.message.slice(0, 200) : ""),
+  );
 }
 
 async function generateViaOpenAICompatible(baseUrl: string, apiKey: string, model: string, system: string, userPrompt: string): Promise<{ text: string; model: string }> {
