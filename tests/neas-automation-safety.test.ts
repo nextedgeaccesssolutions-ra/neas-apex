@@ -32,7 +32,7 @@ describe("NEAS APEX workflow safety", () => {
   });
 
   it("scopes issue-write access to the production probe and supplies repository context", () => {
-    expect(autofix).toContain("permissions:\\n  contents: read\\n\\nconcurrency:");
+    expect(autofix).toContain("permissions:\n  contents: read\n\nconcurrency:");
     expect(autofix).toContain("      issues: write");
     expect(autofix).toContain('gh issue list --repo "$GITHUB_REPOSITORY"');
     expect(autofix).toContain(
@@ -48,14 +48,14 @@ describe("NEAS APEX workflow safety", () => {
   });
 
   it("omits empty Dependabot exclude-patterns that violate the schema", () => {
-    expect(dependabotConfig).not.toMatch(/^\\s*exclude-patterns:\\s*\\[\\s*\\]\\s*$/m);
+    expect(dependabotConfig).not.toMatch(/^\s*exclude-patterns:\s*\[\s*\]\s*$/m);
   });
 
   it("keeps the scheduled production probe on a valid five-field cron expression", () => {
     const schedule = autofix.match(
-      /^\\s*-\\s*cron:\\s*["']([^"']+)["']\\s*$/m,
+      /^\s*-\s*cron:\s*["']([^"']+)["']\s*$/m,
     )?.[1];
     expect(schedule).toBe("*/30 * * * *");
-    expect(schedule?.trim().split(/\\s+/)).toHaveLength(5);
+    expect(schedule?.trim().split(/\s+/)).toHaveLength(5);
   });
 });
