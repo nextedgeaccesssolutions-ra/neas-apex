@@ -8,14 +8,14 @@ Hybrid SaaS: recurring subscription + included usage allowance + metered overage
 
 ### Proposed pricing hypotheses
 
-| Tier          | Indicative price           | Audience                         |
+| Tier          |           Indicative price | Audience                         |
 | ------------- | -------------------------: | -------------------------------- |
-| Free          | $0                         | Activation and product discovery |
-| Pro           | $29/month                  | Individuals                      |
-| Team          | $99/month                  | Small teams                      |
-| Business      | $249/month                 | Growing organizations            |
+| Free          |                         $0 | Activation and product discovery |
+| Pro           |                  $29/month | Individuals                      |
+| Team          |                  $99/month | Small teams                      |
+| Business      |                 $249/month | Growing organizations            |
 | Enterprise    | Negotiated annual contract | Large organizations              |
-| Developer API | Metered                    | Developers and platforms         |
+| Developer API |                    Metered | Developers and platforms         |
 
 Prices must be validated with customer interviews, competitive research, willingness-to-pay tests, payment processor eligibility, tax review, and unit economics before being published.
 

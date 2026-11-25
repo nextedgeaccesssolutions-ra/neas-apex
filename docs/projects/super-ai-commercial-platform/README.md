@@ -76,12 +76,12 @@ Prices are hypotheses for customer validation, not published commitments. Usage 
 
 ## $10M ARR planning model
 
-| Revenue source        | Planning assumption                     | Annual target   |
+| Revenue source        |                     Planning assumption |   Annual target |
 | --------------------- | --------------------------------------: | --------------: |
-| Pro                   | 7,000 × $29 × 12                        | $2,436,000      |
-| Business              | 1,200 × $249 × 12                       | $3,585,600      |
-| Enterprise            | 30 × $100,000 annual recurring contract | $3,000,000      |
-| API / recurring usage | Net recurring usage target              | $978,400        |
+| Pro                   |                        7,000 × $29 × 12 |      $2,436,000 |
+| Business              |                       1,200 × $249 × 12 |      $3,585,600 |
+| Enterprise            | 30 × $100,000 annual recurring contract |      $3,000,000 |
+| API / recurring usage |              Net recurring usage target |        $978,400 |
 | **Total**             |                                         | **$10,000,000** |
 
 This is a target mix, not a forecast. One-time implementation fees are excluded from ARR. Finance reporting must distinguish ARR, MRR, bookings, cash collected, gross profit, and operating profit.
