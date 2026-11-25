@@ -12,7 +12,7 @@ Last updated: 2026-11-25
 | NEAS runtime security | Fail-closed evidence evaluator exists; complete runtime controls are unverified | `lib/neas-api-security.ts` readiness evaluator requires fresh explicit evidence, but the current rate limiter is process-memory-only. `proxy.ts` defaults unreviewed API routes to 404. | Establish authenticated identity, role/scope authorization, durable distributed rate limiting, append-only audit, tool allowlists, adversarial tests, and safe route allowlisting. |
 | NEAS GIIE | Public search and ingestion adapters exist but are disabled; live ingestion and retrieval are NOT CONFIGURED | Search requires `GIIE_PUBLIC_SEARCH_ENABLED=true`, Brave credentials, and the server-to-server connector token. Ingestion additionally requires `GIIE_INGESTION_ENABLED=true`, Supabase URL/service key, and an applied/validated migration. RSS is bounded and host-allowlisted. Embedding provider is not selected. | Validate migrations against staging; configure approved public sources and server-only credentials; add queued/scheduled discovery, normalization, deduplication, evidence/audit, explicit embedding provider/model, populated vectors, and semantic retrieval tests. Keep confidential NEAS data out of public providers. |
 | Production release gate | Production deployment is READY for current main code; workforce activation is NOT APPROVED | The readiness evaluator is a gate, not an implementation or live verification. No domain alias reassignment or privileged production configuration is implied by a code deployment. | Preview integration tests, complete acceptance evidence, independent security review, cost/rollback report, then explicit owner sign-off before production activation. |
-| SUPER AI commercial platform | Phase 0 architecture baseline created on `feat/super-ai-commercial-foundation`; no commercial runtime implemented or deployed | Independent global AI SaaS built selectively on NEAS APEX; dedicated customer data plane, tenant isolation, billing/metering, governed agent runtime, enterprise/API products | Complete code/data-flow/license audit; provision separate staging data plane; prove tenant authorization before billing implementation. |
+| SUPER AI commercial platform | Phase 0 architecture baseline and targeted route/auth/AI audit documented on `feat/super-ai-commercial-foundation`; no commercial runtime implemented or deployed | Independent global AI SaaS built selectively on NEAS APEX; dedicated customer data plane, tenant isolation, billing/metering, governed agent runtime, enterprise/API products | Complete recursive code/data-flow/dependency/IP audit; reconcile stale FounderOS/GladOS instructions; provision separate staging data plane; prove tenant authorization before billing implementation. |
 
 ## Verified implementation and CI evidence
 
@@ -143,3 +143,16 @@ Production activation remains blocked until the worker/queue, durable rate limit
 - No code runtime, Supabase migration, Stripe account, secrets, production environment, or deployment was changed.
 - Next gate: complete the detailed route/data/auth/billing audit and reuse/isolate matrix; confirm IP/license ownership; provision a dedicated SUPER AI staging database only after owner-approved access and project selection.
 - Implementation documents: `docs/projects/super-ai-commercial-platform/README.md`, `DATABASE_SCHEMA.md`, `BILLING_SPEC.md`, `SECURITY_SPEC.md`, `IMPLEMENTATION_ROADMAP.md`, and `TASKS.md`.
+
+
+### SUPER AI targeted application audit — 25 November 2026
+
+- Current homepage and root metadata remain NEAS APEX / NEAS AI branded; no SUPER AI commercial application shell was introduced.
+- Existing NEAS admin auth is a single password-based administrator session with fixed scopes, not customer identity or organization RBAC.
+- API proxy is default-deny. Keep this posture for new commercial routes.
+- NEAS chat uses same-origin checks and process-local rate limiting; it has no commercial tenant entitlement context.
+- Existing workforce task API/worker use NEAS service-role storage and NEAS task tables; do not reuse for commercial tenants without a separate tenant-aware implementation and review.
+- Existing OpenRouter router is a foundation only; tenant budgets, durable commercial metering, and customer-level policies are not established by it.
+- Stripe SDK is present, but no Stripe checkout/webhook/subscription route was found in the targeted reviewed route/lib inventory.
+- `CLAUDE.md` / `AGENTS.md` contain stale FounderOS/GladOS references, including SQLite paths absent from the inspected current tree. Reconcile project guidance before relying on it.
+- Next gate remains full recursive audit and legal/IP review. No production code, Supabase migration, billing account, secret, or deployment changed.
