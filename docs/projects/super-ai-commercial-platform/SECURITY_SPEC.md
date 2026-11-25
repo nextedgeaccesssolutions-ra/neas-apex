@@ -23,6 +23,7 @@
 ## Agent execution policy
 
 Risk classes:
+
 - Read-only: retrieve permitted tenant data and produce analysis.
 - Draft: prepare proposed content without sending or committing.
 - Low-risk execution: execute pre-approved, reversible actions within explicit limits.

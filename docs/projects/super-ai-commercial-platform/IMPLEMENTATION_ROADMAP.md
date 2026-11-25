@@ -7,6 +7,7 @@
 ## Phase 0 — Architecture and repository audit (Weeks 1–2)
 
 Deliver:
+
 - Codebase and data-flow inventory.
 - Reuse / replace / isolate matrix.
 - Dependency and license review.
@@ -15,6 +16,7 @@ Deliver:
 - Architecture and acceptance baseline.
 
 Exit criteria:
+
 - Existing SQLite app data and NEAS Supabase internal data are not mixed with commercial tenant data.
 - Existing authentication, billing, agent, and GIIE code is accurately classified.
 - Dedicated commercial infrastructure and ownership requirements are documented.
@@ -23,6 +25,7 @@ Exit criteria:
 ## Phase 1 — SaaS identity and tenant foundation (Weeks 3–5)
 
 Deliver:
+
 - Organization and membership model.
 - Registration, login, invitations, roles.
 - Tenant-scoped PostgreSQL and RLS.
@@ -30,6 +33,7 @@ Deliver:
 - Audit events and security tests.
 
 Exit criteria:
+
 - Two or more test organizations cannot access each other's rows through UI, API, RPC, or direct authenticated database queries.
 - Owner/admin/member permissions are enforced server-side.
 - No tenant data is exposed through public routes or logs.
@@ -37,6 +41,7 @@ Exit criteria:
 ## Phase 2 — Billing and metering (Weeks 5–8)
 
 Deliver:
+
 - Plan and price catalog.
 - Checkout and customer portal.
 - Verified webhook handler.
@@ -45,6 +50,7 @@ Deliver:
 - Budget enforcement and reconciliation.
 
 Exit criteria:
+
 - Test-mode checkout, renewal, failed payment, cancellation, upgrade/downgrade and refund flows pass.
 - Duplicate/out-of-order webhooks are safe.
 - Usage is idempotent and reconciled.
@@ -54,6 +60,7 @@ Exit criteria:
 ## Phase 3 — AI control plane and durable execution (Weeks 7–12)
 
 Deliver:
+
 - Provider-neutral model router.
 - Model catalog and constrained fallback.
 - Agent registry and versioned definitions.
@@ -62,6 +69,7 @@ Deliver:
 - Cost attribution and evaluation traces.
 
 Exit criteria:
+
 - Three specialist workflows pass deterministic integration tests.
 - Retries do not duplicate external side effects.
 - All executions are attributable to a tenant and cost center.
@@ -71,12 +79,14 @@ Exit criteria:
 ## Phase 4 — Commercial MVP (Weeks 13–16)
 
 Deliver:
+
 - SUPER AI-branded application shell.
 - Personal, Team and Business plan experiences.
 - Three launch workflows: research intelligence, sales preparation, professional operations.
 - Onboarding, documentation, support and analytics.
 
 Exit criteria:
+
 - New customer can register, select a plan in test mode, complete onboarding, run an entitled workflow, view usage, and cancel.
 - Workflows produce evidence-backed deliverables.
 - Mobile and desktop tests pass.
@@ -85,6 +95,7 @@ Exit criteria:
 ## Phase 5 — Enterprise and Developer Cloud (Months 5–8)
 
 Deliver:
+
 - API keys and versioned public API.
 - Developer docs, quotas and usage reporting.
 - Enterprise SSO / identity options.
@@ -92,6 +103,7 @@ Deliver:
 - White-label configuration and marketplace beta.
 
 Exit criteria:
+
 - API consumers can authenticate, execute, meter, and inspect usage.
 - Tenant and key scopes are tested.
 - Enterprise controls are documented and independently reviewed.
@@ -100,6 +112,7 @@ Exit criteria:
 ## Phase 6 — International scale (Months 9–36)
 
 Deliver:
+
 - Regional currencies and payment methods.
 - Localization.
 - Affiliate and partner program.
@@ -108,6 +121,7 @@ Deliver:
 - Capacity, cost and reliability optimization.
 
 Exit criteria:
+
 - Each target region has verified payment availability and legal/tax review.
 - Unit economics are positive or have an approved investment rationale.
 - Churn, CAC, LTV, gross margin and NRR are measured.

@@ -8,14 +8,14 @@ Hybrid SaaS: recurring subscription + included usage allowance + metered overage
 
 ### Proposed pricing hypotheses
 
-| Tier | Indicative price | Audience |
-|---|---:|---|
-| Free | $0 | Activation and product discovery |
-| Pro | $29/month | Individuals |
-| Team | $99/month | Small teams |
-| Business | $249/month | Growing organizations |
-| Enterprise | Negotiated annual contract | Large organizations |
-| Developer API | Metered | Developers and platforms |
+| Tier          | Indicative price           | Audience                         |
+| ------------- | -------------------------: | -------------------------------- |
+| Free          | $0                         | Activation and product discovery |
+| Pro           | $29/month                  | Individuals                      |
+| Team          | $99/month                  | Small teams                      |
+| Business      | $249/month                 | Growing organizations            |
+| Enterprise    | Negotiated annual contract | Large organizations              |
+| Developer API | Metered                    | Developers and platforms         |
 
 Prices must be validated with customer interviews, competitive research, willingness-to-pay tests, payment processor eligibility, tax review, and unit economics before being published.
 
@@ -45,6 +45,7 @@ Prices must be validated with customer interviews, competitive research, willing
 ## Metering contract
 
 Each billable event records:
+
 - unique event ID and idempotency key
 - organization, actor, and run IDs
 - product/feature and agent identifier
@@ -69,6 +70,7 @@ Do not bill on estimated tokens alone if actual provider usage is available. Mar
 ## Revenue metrics
 
 Report separately:
+
 - MRR and ARR from recurring contracted revenue.
 - Usage revenue and recurring usage run-rate.
 - Bookings and signed contract value.

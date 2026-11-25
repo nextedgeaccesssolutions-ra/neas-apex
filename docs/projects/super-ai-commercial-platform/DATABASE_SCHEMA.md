@@ -10,28 +10,28 @@ All tenant-owned rows carry `organization_id` and are protected by PostgreSQL RL
 
 ## Core tables
 
-| Table | Key fields | Purpose |
-|---|---|---|
-| profiles | id, display_name, locale, created_at | User profile |
-| organizations | id, name, slug, status, created_at | Customer tenant |
-| organization_members | organization_id, user_id, role, status | Tenant membership |
-| invitations | id, organization_id, email, role, token_hash, expires_at | Controlled invitations |
-| plans | id, code, name, interval, active | Product catalog |
-| plan_prices | id, plan_id, currency, amount_minor, provider_price_id, active | Versioned regional prices |
-| subscriptions | id, organization_id, provider, provider_customer_id, provider_subscription_id, status, period dates | Subscription state |
-| entitlements | id, organization_id, feature_key, limit_value, source | Effective feature and usage limits |
-| usage_events | id, organization_id, actor_id, run_id, event_key, quantity, unit, occurred_at | Append-only usage facts |
-| credit_accounts | id, organization_id, currency, balance_minor, updated_at | Optional prepaid credit account |
-| credit_ledger | id, organization_id, event_id, direction, amount_minor, idempotency_key | Append-only credit movements |
-| agent_definitions | id, slug, version, risk_level, enabled | Reviewed agent catalog |
-| agent_runs | id, organization_id, actor_id, agent_id, status, idempotency_key, started_at, finished_at | Durable execution record |
-| tool_connections | id, organization_id, provider, external_account_ref, scopes, status | Customer-authorized integrations |
-| approvals | id, organization_id, run_id, action_digest, requested_by, decided_by, status, expires_at | Human approval record |
-| provider_cost_events | id, organization_id, run_id, provider, model, input_units, output_units, cost_micros, occurred_at | AI and infrastructure cost attribution |
-| billing_events | id, provider, provider_event_id, event_type, processed_at, payload_hash | Webhook idempotency and reconciliation |
-| invoices | id, organization_id, provider_invoice_id, status, currency, amount_due_minor, amount_paid_minor | Invoice mirror |
-| api_keys | id, organization_id, key_prefix, secret_hash, scopes, expires_at, revoked_at | Hashed developer credentials |
-| audit_events | id, organization_id, actor_type, actor_id, action, target, metadata, occurred_at | Security and business audit |
+| Table                | Key fields                                                                                          | Purpose                                |
+| -------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| profiles             | id, display_name, locale, created_at                                                                | User profile                           |
+| organizations        | id, name, slug, status, created_at                                                                  | Customer tenant                        |
+| organization_members | organization_id, user_id, role, status                                                              | Tenant membership                      |
+| invitations          | id, organization_id, email, role, token_hash, expires_at                                            | Controlled invitations                 |
+| plans                | id, code, name, interval, active                                                                    | Product catalog                        |
+| plan_prices          | id, plan_id, currency, amount_minor, provider_price_id, active                                      | Versioned regional prices              |
+| subscriptions        | id, organization_id, provider, provider_customer_id, provider_subscription_id, status, period dates | Subscription state                     |
+| entitlements         | id, organization_id, feature_key, limit_value, source                                               | Effective feature and usage limits     |
+| usage_events         | id, organization_id, actor_id, run_id, event_key, quantity, unit, occurred_at                       | Append-only usage facts                |
+| credit_accounts      | id, organization_id, currency, balance_minor, updated_at                                            | Optional prepaid credit account        |
+| credit_ledger        | id, organization_id, event_id, direction, amount_minor, idempotency_key                             | Append-only credit movements           |
+| agent_definitions    | id, slug, version, risk_level, enabled                                                              | Reviewed agent catalog                 |
+| agent_runs           | id, organization_id, actor_id, agent_id, status, idempotency_key, started_at, finished_at           | Durable execution record               |
+| tool_connections     | id, organization_id, provider, external_account_ref, scopes, status                                 | Customer-authorized integrations       |
+| approvals            | id, organization_id, run_id, action_digest, requested_by, decided_by, status, expires_at            | Human approval record                  |
+| provider_cost_events | id, organization_id, run_id, provider, model, input_units, output_units, cost_micros, occurred_at   | AI and infrastructure cost attribution |
+| billing_events       | id, provider, provider_event_id, event_type, processed_at, payload_hash                             | Webhook idempotency and reconciliation |
+| invoices             | id, organization_id, provider_invoice_id, status, currency, amount_due_minor, amount_paid_minor     | Invoice mirror                         |
+| api_keys             | id, organization_id, key_prefix, secret_hash, scopes, expires_at, revoked_at                        | Hashed developer credentials           |
+| audit_events         | id, organization_id, actor_type, actor_id, action, target, metadata, occurred_at                    | Security and business audit            |
 
 ## Data integrity rules
 

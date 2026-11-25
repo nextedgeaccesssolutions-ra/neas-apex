@@ -15,6 +15,7 @@ The first deliverable is a secure commercial foundation. No production payment p
 ## Repository audit — 25 November 2026
 
 Verified from the repository:
+
 - Default branch: `main`; audit base commit: `1b5b3a671524bee69e412b8b31d8694f6c3d8438`.
 - `package.json` includes Next.js 16.4.6, React 19.2.0, TypeScript, AI SDK, Stripe SDK, Vitest, and Node.js 22 engine declaration.
 - `CLAUDE.md` and `AGENTS.md` contain stale FounderOS/GladOS guidance (including references to SQLite files and routes not present in the inspected current tree). Treat those notes as inconsistent until reconciled; do not assume the described SQLite data layer is the current runtime database.
@@ -23,7 +24,6 @@ Verified from the repository:
 - No existing commercial subscription, organization/tenant, entitlement, usage-credit ledger, or Stripe webhook implementation was confirmed during this initial targeted audit.
 
 These findings are a bounded audit, not a complete codebase or security review.
-
 
 ### Additional targeted application audit
 
@@ -76,19 +76,20 @@ Prices are hypotheses for customer validation, not published commitments. Usage 
 
 ## $10M ARR planning model
 
-| Revenue source | Planning assumption | Annual target |
-|---|---:|---:|
-| Pro | 7,000 × $29 × 12 | $2,436,000 |
-| Business | 1,200 × $249 × 12 | $3,585,600 |
-| Enterprise | 30 × $100,000 annual recurring contract | $3,000,000 |
-| API / recurring usage | Net recurring usage target | $978,400 |
-| **Total** | | **$10,000,000** |
+| Revenue source        | Planning assumption                     | Annual target   |
+| --------------------- | --------------------------------------: | --------------: |
+| Pro                   | 7,000 × $29 × 12                        | $2,436,000      |
+| Business              | 1,200 × $249 × 12                       | $3,585,600      |
+| Enterprise            | 30 × $100,000 annual recurring contract | $3,000,000      |
+| API / recurring usage | Net recurring usage target              | $978,400        |
+| **Total**             |                                         | **$10,000,000** |
 
 This is a target mix, not a forecast. One-time implementation fees are excluded from ARR. Finance reporting must distinguish ARR, MRR, bookings, cash collected, gross profit, and operating profit.
 
 ## Launch strategy
 
 Start with three validated workflows:
+
 1. Global Research Intelligence — source-backed research and reports.
 2. AI Sales Workforce — prospect research, qualification, draft outreach and CRM preparation.
 3. Professional Operations — structured documents, project plans, and business deliverables.
@@ -98,6 +99,7 @@ Engineering, industrial, and renewable-energy workflows are a potential first ve
 ## Release gates
 
 No production launch until:
+
 - Independent ownership, IP, and licensing review is complete.
 - Dedicated commercial infrastructure is provisioned and reviewed.
 - Tenant-isolation and authorization tests pass.
