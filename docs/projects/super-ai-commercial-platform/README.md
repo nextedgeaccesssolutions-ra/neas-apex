@@ -17,12 +17,32 @@ The first deliverable is a secure commercial foundation. No production payment p
 Verified from the repository:
 - Default branch: `main`; audit base commit: `1b5b3a671524bee69e412b8b31d8694f6c3d8438`.
 - `package.json` includes Next.js 16.4.6, React 19.2.0, TypeScript, AI SDK, Stripe SDK, Vitest, and Node.js 22 engine declaration.
-- The repository's `CLAUDE.md` describes a Next.js application with a SQLite application data layer (`lib/db.ts` / `lib/data.ts`).
+- `CLAUDE.md` and `AGENTS.md` contain stale FounderOS/GladOS guidance (including references to SQLite files and routes not present in the inspected current tree). Treat those notes as inconsistent until reconciled; do not assume the described SQLite data layer is the current runtime database.
 - Supabase migrations separately define NEAS workforce, GIIE, and project-security structures.
 - The NEAS project board explicitly states that live inference, full specialist execution, and production activation require separate evidence and owner approval.
 - No existing commercial subscription, organization/tenant, entitlement, usage-credit ledger, or Stripe webhook implementation was confirmed during this initial targeted audit.
 
 These findings are a bounded audit, not a complete codebase or security review.
+
+
+### Additional targeted application audit
+
+- The current homepage renders the NEAS APEX experience (`ApexWorld`, `ApexOverviewPanel`, and `FreeVoiceAIWidget`); the root metadata is branded NEAS AI, not SUPER AI.
+- `lib/neas-admin-auth.ts` implements one password-based NEAS administrator session. `lib/neas-workforce-authz.ts` returns a fixed `neas-admin` principal and static scopes; this is not customer authentication, multi-user RBAC, or tenant membership.
+- `proxy.ts` uses a default-deny API path allowlist. Preserve that posture and review each new commercial route before allowlisting it.
+- `app/api/ai/chat` uses same-origin checks and a process-local rate limiter; the inspected route does not establish a commercial organization identity or customer entitlement.
+- The NEAS workforce task API and internal worker use the NEAS Supabase service-role integration and NEAS task tables. They are internal NEAS infrastructure and must not be pointed at commercial tenant data or reused as a tenant-aware worker without a separate design and review.
+- `src/lib/ai-router.ts` is an existing server-side OpenRouter foundation with model discovery, recommendation, and model calls. It is not yet a complete commercial model router with tenant budgets, durable usage attribution, and customer policy enforcement.
+- Stripe is present in `package.json`, but no Stripe checkout, webhook, subscription, or customer-portal route was found in the reviewed `app/api` tree and `lib` inventory. This is a targeted finding, not proof that no billing-related code exists anywhere in the repository.
+- Existing Supabase migrations define NEAS workforce/GIIE/project structures. They are not the SUPER AI commercial schema and must remain in their current trust boundary.
+
+### Audit gaps still open
+
+- Complete recursive inventory of route handlers, server actions, data access, environment variable use, and all connector integrations.
+- Inspect current main's dependency lockfile and licenses; review all bundled assets and source provenance.
+- Inspect Supabase project identity, schema, RLS, grants, backups, and service-role consumers without exposing credentials.
+- Inspect Vercel project linkage and deployment configuration without changing production settings.
+- Confirm legal entity, intellectual-property assignment, trademark clearance, and rights to reuse NEAS APEX code and brand assets.
 
 ## Architecture decisions
 
