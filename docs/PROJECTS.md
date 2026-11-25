@@ -1,6 +1,6 @@
 # NEAS APEX — Project Board
 
-Last updated: 2026-11-24
+Last updated: 2026-11-25
 
 ## Active work
 
@@ -12,6 +12,7 @@ Last updated: 2026-11-24
 | NEAS runtime security | Fail-closed evidence evaluator exists; complete runtime controls are unverified | `lib/neas-api-security.ts` readiness evaluator requires fresh explicit evidence, but the current rate limiter is process-memory-only. `proxy.ts` defaults unreviewed API routes to 404. | Establish authenticated identity, role/scope authorization, durable distributed rate limiting, append-only audit, tool allowlists, adversarial tests, and safe route allowlisting. |
 | NEAS GIIE | Public search and ingestion adapters exist but are disabled; live ingestion and retrieval are NOT CONFIGURED | Search requires `GIIE_PUBLIC_SEARCH_ENABLED=true`, Brave credentials, and the server-to-server connector token. Ingestion additionally requires `GIIE_INGESTION_ENABLED=true`, Supabase URL/service key, and an applied/validated migration. RSS is bounded and host-allowlisted. Embedding provider is not selected. | Validate migrations against staging; configure approved public sources and server-only credentials; add queued/scheduled discovery, normalization, deduplication, evidence/audit, explicit embedding provider/model, populated vectors, and semantic retrieval tests. Keep confidential NEAS data out of public providers. |
 | Production release gate | Production deployment is READY for current main code; workforce activation is NOT APPROVED | The readiness evaluator is a gate, not an implementation or live verification. No domain alias reassignment or privileged production configuration is implied by a code deployment. | Preview integration tests, complete acceptance evidence, independent security review, cost/rollback report, then explicit owner sign-off before production activation. |
+| SUPER AI commercial platform | Phase 0 architecture baseline created on `feat/super-ai-commercial-foundation`; no commercial runtime implemented or deployed | Independent global AI SaaS built selectively on NEAS APEX; dedicated customer data plane, tenant isolation, billing/metering, governed agent runtime, enterprise/API products | Complete code/data-flow/license audit; provision separate staging data plane; prove tenant authorization before billing implementation. |
 
 ## Verified implementation and CI evidence
 
@@ -132,3 +133,13 @@ Verified against the live repository and connected Supabase project:
 - Voice agent main branch was updated with NEAS AI Core greeting/prompt identity, domain allowlist, Zero Retention, recording-off, and guardrails. The website widget bridge is in main, but live browser microphone, interruption, and two-way audio tests have not been completed because the browser test service had no credits. The agent has no workforce tools.
 
 Production activation remains blocked until the worker/queue, durable rate limiting, tested model/voice paths, GIIE source approval/provider/embedding setup, independent security review, and timestamped acceptance evidence are all in place.
+
+
+## SUPER AI commercial platform — 25 November 2026
+
+- Created implementation branch `feat/super-ai-commercial-foundation` from main commit `1b5b3a671524bee69e412b8b31d8694f6c3d8438`.
+- Added architecture charter, proposed database schema, billing specification, security specification, implementation roadmap, and task backlog under `docs/projects/super-ai-commercial-platform/`.
+- Initial repository audit confirms a Next.js/TypeScript application, Stripe SDK dependency, a documented SQLite application data layer, and separate NEAS Supabase workforce/GIIE migrations. The targeted audit did not confirm an existing commercial subscription, tenant, entitlement, usage ledger, or Stripe webhook implementation.
+- No code runtime, Supabase migration, Stripe account, secrets, production environment, or deployment was changed.
+- Next gate: complete the detailed route/data/auth/billing audit and reuse/isolate matrix; confirm IP/license ownership; provision a dedicated SUPER AI staging database only after owner-approved access and project selection.
+- Implementation documents: `docs/projects/super-ai-commercial-platform/README.md`, `DATABASE_SCHEMA.md`, `BILLING_SPEC.md`, `SECURITY_SPEC.md`, `IMPLEMENTATION_ROADMAP.md`, and `TASKS.md`.
