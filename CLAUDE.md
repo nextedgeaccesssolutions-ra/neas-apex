@@ -9,7 +9,7 @@
 > `package-lock.json`, `docs/PROJECTS.md`, and the current source/tests.
 >
 
-````text
+```text
 # FounderOS (on GladOS): project notes for coding agents
 
 Historical archive only. For active NEAS APEX work, follow AGENTS.md instead.
@@ -69,4 +69,4 @@ password exists), `GLADOS_PASSWORD_HASH` + `GLADOS_SESSION_SECRET` (written by
 Setup → Security, never hand-set),
 `BRAIN_PROVIDER` / `GBRAIN_BIN` / `GBRAIN_STORE` (brain), plus connector keys
 listed in `.env.example`.
-````
+```
