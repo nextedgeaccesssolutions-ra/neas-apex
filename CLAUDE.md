@@ -11,7 +11,7 @@
 
 # FounderOS (on GladOS): project notes for coding agents
 
-Read this first. Same rules apply to any agent (see AGENTS.md).
+Historical archive only. For active NEAS APEX work, follow AGENTS.md instead.
 
 ## What this is
 
@@ -64,7 +64,7 @@ read its folder first and brief them from it. Shipped projects move to
 
 `GLADOS_DEFAULT_MODE` (`demo` unless set to `real`: what a fresh clone opens
 on), `GLADOS_DB` (db path), `GLADOS_HOST` (bind address; loopback until a
-password exists), `GLADOS_PASSWORD_HASH` + `GLADOS_SESSION_SECRET` (written by Setup →
-Security, never hand-set),
+password exists), `GLADOS_PASSWORD_HASH` + `GLADOS_SESSION_SECRET` (written by
+Setup → Security, never hand-set),
 `BRAIN_PROVIDER` / `GBRAIN_BIN` / `GBRAIN_STORE` (brain), plus connector keys
 listed in `.env.example`.
