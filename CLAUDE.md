@@ -14,6 +14,7 @@
 Read this first. Same rules apply to any agent (see AGENTS.md).
 
 ## What this is
+
 A Next.js 14 (app router) + SQLite personal operating system. One database
 (`lib/db.ts`, opened via `lib/data.ts`), typed with zod schemas in
 `lib/schemas.ts`. Pages under `app/`, shared UI under `components/`, domain
@@ -22,6 +23,7 @@ logic and connectors under `lib/`. Tests are vitest (`tests/`), including
 answers 200).
 
 FounderOS v3 is the GladOS codebase plus two things of its own:
+
 - `founderos/`: the FounderOS v1 Agents board and Social pages (`app/agents`,
   `app/social`) and the UI they need. They read GladOS's database and
   connectors; nothing in `founderos/` has its own data layer.
@@ -30,6 +32,7 @@ FounderOS v3 is the GladOS codebase plus two things of its own:
   start. Demo rows never go into `data/`.
 
 ## Project board
+
 `docs/PROJECTS.md` is the live board of what is being built here, its
 state, and what each step is waiting on. Read it at the start of every
 session, right after this file. Update it before the session ends whenever
@@ -42,6 +45,7 @@ read its folder first and brief them from it. Shipped projects move to
 `docs/projects/_done/`, never deleted.
 
 ## House rules
+
 - **Honest or absent.** No placeholder metrics, fake "connected" states, or
   demo text dressed as real data. An unconfigured integration shows a
   *Not configured* badge and a *Set up* link (`SetupLink` / `setupHrefFor`;
@@ -56,6 +60,7 @@ read its folder first and brief them from it. Shipped projects move to
 - Run `npm test` and `npm run typecheck` before claiming a change works.
 
 ## Env
+
 `GLADOS_DEFAULT_MODE` (`demo` unless set to `real`: what a fresh clone opens
 on), `GLADOS_DB` (db path), `GLADOS_HOST` (bind address; loopback until a password
 exists), `GLADOS_PASSWORD_HASH` + `GLADOS_SESSION_SECRET` (written by Setup →
