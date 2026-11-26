@@ -7,7 +7,7 @@ This repository is the NEAS APEX Next.js/TypeScript application for NextEdge Acc
 - `package.json` and `package-lock.json` define the current runtime, package manager inputs, and dependency graph.
 - `app/`, `components/`, `lib/`, `src/`, `supabase/`, and `.github/workflows/` define the active application. Verify the actual import chain before claiming a component is rendered or deployed.
 - `docs/PROJECTS.md` and current NEAS documentation describe project status; verify important claims against source, tests, CI, and live deployment evidence.
-- `CLAUDE.md` is a legacy FounderOS/GladOS reference archive only. It is not authoritative for NEAS APEX. Do not follow its old product identity, Next.js 14 assumptions, file paths, database layout, route names, or GLADOS environment defaults unless current source code independently confirms them.
+- `CLAUDE.md` is a current pointer to this guide. Historical FounderOS/GladOS notes are preserved only in `docs/archive/CLAUDE-FOUNDEROS-LEGACY.txt`; they are not authoritative for NEAS APEX and must not be used to infer active routes, data stores, runtime versions, or environment defaults.
 
 ## Non-negotiables
 
