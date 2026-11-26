@@ -39,8 +39,9 @@ session, right after this file. Update it before the session ends whenever
 a step changes state, a blocker clears, or a new project starts. Absolute
 dates only. Its `## Checklist` section is rendered under the terminal input by
 the status line: keep it in sync with the tables (tick items when done, add
-new ones, `!` prefix = waiting on the operator). Multi-step projects have a folder
-under `docs/projects/<name>/` with `TASKS.md`; when the operator picks a project,
+new ones, `!` prefix = waiting on the operator). Multi-step projects have a
+folder under `docs/projects/<name>/` with `TASKS.md`; when the operator picks a
+project,
 read its folder first and brief them from it. Shipped projects move to
 `docs/projects/_done/`, never deleted.
 
@@ -62,8 +63,8 @@ read its folder first and brief them from it. Shipped projects move to
 ## Env
 
 `GLADOS_DEFAULT_MODE` (`demo` unless set to `real`: what a fresh clone opens
-on), `GLADOS_DB` (db path), `GLADOS_HOST` (bind address; loopback until a password
-exists), `GLADOS_PASSWORD_HASH` + `GLADOS_SESSION_SECRET` (written by Setup →
+on), `GLADOS_DB` (db path), `GLADOS_HOST` (bind address; loopback until a
+password exists), `GLADOS_PASSWORD_HASH` + `GLADOS_SESSION_SECRET` (written by Setup →
 Security, never hand-set),
 `BRAIN_PROVIDER` / `GBRAIN_BIN` / `GBRAIN_STORE` (brain), plus connector keys
 listed in `.env.example`.
