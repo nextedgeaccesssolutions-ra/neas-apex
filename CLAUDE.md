@@ -8,6 +8,7 @@
 > current repository work, follow `AGENTS.md`, `package.json`,
 > `package-lock.json`, `docs/PROJECTS.md`, and the current source/tests.
 >
+
 # FounderOS (on GladOS): project notes for coding agents
 
 Read this first. Same rules apply to any agent (see AGENTS.md).
