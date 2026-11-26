@@ -1,3 +1,7 @@
+> **LEGACY REFERENCE — NOT AUTHORITATIVE FOR NEAS APEX**
+>
+> This file is retained as historical source material from an earlier FounderOS/GladOS application. It describes a Next.js 14 personal operating system and legacy SQLite/GLADOS paths that are not the active NEAS APEX architecture. Do not use these instructions to identify the product or infer current routes, data stores, environment variables, or runtime behavior. For current repository work, follow `AGENTS.md`, `package.json`, `package-lock.json`, `docs/PROJECTS.md`, and the current source/tests.
+>
 # FounderOS (on GladOS): project notes for coding agents
 
 Read this first. Same rules apply to any agent (see AGENTS.md).
