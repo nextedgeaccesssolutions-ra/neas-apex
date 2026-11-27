@@ -67,22 +67,29 @@ No recurring schedule is active merely because this architecture describes one. 
 
 ## Current implementation boundary
 
-Implemented in this tranche:
-- Typed GIIE discovery, source-policy, evidence, opportunity and pipeline definitions.
-- Twelve research-role definitions.
-- Provenance and confidence validation.
-- Evidence classification helper.
-- Independent-source-domain corroboration helper.
-- NEAS relevance scoring helper.
-- Governance flags for legal collection, source attribution, separation of public/internal data, and approval-gated commercialization.
-- Unit tests authored.
+Implemented in the existing GIIE foundation:
+- Typed public discovery, source governance, evidence classification, opportunity assessment, and research-role definitions.
+- Brave Search public-web discovery adapter.
+- RSS parser with exact-host allowlisting, bounded responses, redirect rejection, and source review controls.
+- Supabase public-intelligence source, discovery, opportunity, research-job, and vector-search foundations deployed to the NEAS project.
+- Authenticated source registration and review endpoints.
+- Existing workforce worker and CI validation.
+
+Added in the Philippines trend-engine implementation branch:
+- Google Trends Philippines RSS collection (geo=PH).
+- Hourly rotating Brave Search research across twelve industry groups.
+- Source-specific priority scores, industry classification, UTC-hour deduplication, and run-history tracking.
+- Supabase migration for trend observations and collection runs, committed for review but not yet applied to the hosted database.
+- Hourly GitHub Actions workflow, which becomes active only after the PR is merged and the required repository secrets are configured.
+- Unit tests for topic rotation, industry classification, RSS parsing, scoring, and observation mapping.
 
 Not yet implemented or verified:
-- Search-provider credentials or API adapters.
-- RSS ingestion, compliant page fetchers, or scheduled discovery.
-- Supabase schema, RLS policies, vector extension, or ingestion workers.
-- Live research-agent model runtimes.
-- Dashboard, alerts, source coverage, and cost accounting.
-- Passing CI for the new GIIE tests.
+- Applying the new trend-observation migration to the hosted Supabase database.
+- Configuring GitHub Actions secrets and verifying a successful scheduled collector run.
+- Authenticated trend dashboard and trend-cluster visualization in NEAS APEX.
+- Social-network trend adapters (which require approved platform APIs and credentials).
+- AI-assisted opportunity assessments and quality-controlled content drafting from the new trend observations.
+- Website CMS integration and automated publishing of eligible content.
+- Live end-to-end production validation. The current NEAS APEX Vercel project has a latest deployment error and is not marked live.
 
-The module does not fetch the internet or persist data. It is a tested-by-design foundation until CI and live integrations are verified.
+Automatic publishing remains constrained by evidence quality and existing NEAS approval controls. Low-risk, source-cited informational content may be automated after quality checks; company credentials, project claims, safety/engineering advice, pricing, tender submissions, and customer communications remain approval-gated.
