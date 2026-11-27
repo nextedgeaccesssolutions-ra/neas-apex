@@ -28,7 +28,6 @@ jobs:
       - name: Validate Compose configuration without starting services
         run: docker compose --env-file .env.docker.example config --quiet
   docker-build:
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
