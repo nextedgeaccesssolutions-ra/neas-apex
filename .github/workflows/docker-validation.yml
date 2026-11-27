@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'Dockerfile'
+      - 'Dockerfile.lighthouse'
       - 'compose.yaml'
       - '.dockerignore'
       - '.env.docker.example'
@@ -38,3 +39,10 @@ jobs:
           file: Dockerfile
           push: false
           tags: neas-apex:pr-validation
+      - name: Build Lighthouse audit image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.lighthouse
+          push: false
+          tags: neas-lighthouse:pr-validation
