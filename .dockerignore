@@ -2,12 +2,16 @@
 .github
 .next
 node_modules
+
+# Package-manager logs and generated test/build artifacts.
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 coverage
 test-results
 playwright-report
+
+# Local development files.
 .vscode
 .idea
 .DS_Store
