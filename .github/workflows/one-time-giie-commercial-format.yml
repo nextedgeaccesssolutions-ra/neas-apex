@@ -1,0 +1,34 @@
+name: One-time GIIE commercial formatting
+
+on:
+  push:
+    branches:
+      - feature/giie-commercial-opportunity-engine
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.ref == 'refs/heads/feature/giie-commercial-opportunity-engine'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: feature/giie-commercial-opportunity-engine
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+      - name: Format changed GIIE commercial files
+        run: npx --yes prettier@3 --write app/api/admin/giie/commercial-signals/route.ts app/market-intelligence/commercial/page.tsx app/market-intelligence/page.tsx docs/NEAS-GIIE-COMMERCIAL-OPPORTUNITY-ENGINE.md lib/giie-commercial-collector.ts lib/giie-commercial-store.ts lib/giie-commercial.ts scripts/giie-commercial-collector.ts tests/neas-giie-commercial.test.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/api/admin/giie/commercial-signals/route.ts app/market-intelligence/commercial/page.tsx app/market-intelligence/page.tsx docs/NEAS-GIIE-COMMERCIAL-OPPORTUNITY-ENGINE.md lib/giie-commercial-collector.ts lib/giie-commercial-store.ts lib/giie-commercial.ts scripts/giie-commercial-collector.ts tests/neas-giie-commercial.test.ts
+          if git diff --cached --quiet; then
+            echo "Files already formatted."
+          else
+            git commit -m "style(giie): format commercial intelligence files"
+            git push origin HEAD:feature/giie-commercial-opportunity-engine
+          fi
