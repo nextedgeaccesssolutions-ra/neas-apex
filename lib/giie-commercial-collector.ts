@@ -79,7 +79,6 @@ export async function runCommercialIntelligenceCollection(now = new Date()): Pro
     const searchResponses = await Promise.all(topicGroup.queries.map(async (query) => {
       try {
         const response = await searchPublicWeb(query, 8);
-        warnings.push(...response.warnings);
         return response.results;
       } catch (error) {
         warnings.push(error instanceof Error ? error.message : "Commercial public search failed.");
