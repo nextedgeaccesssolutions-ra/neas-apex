@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { consumeRateLimit } from "@/lib/neas-api-security";
+import { consumeRateLimit, isSameOriginBrowserRequest } from "@/lib/neas-api-security";
 import {
   authorizeNeasScope,
   resolveNeasAdminPrincipalFromRequest,
@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
   if (!authorizeNeasScope(principal, "giie:public:search").allowed) {
     return jsonError("Insufficient GIIE permissions.", 403);
   }
+
+  if (!isSameOriginBrowserRequest(request)) return jsonError("Same-origin request required.", 403);
 
   const rate = consumeRateLimit(request, "neas-giie-commercial-cms-submit", 5, 60_000);
   if (!rate.allowed) return jsonError("Commercial CMS submission rate limit reached.", 429);
