@@ -19,6 +19,22 @@ services:
       GIIE_COMMERCIAL_COLLECTION_ENABLED: "false"
     networks: [neas-internal]
 
+  lighthouse:
+    profiles: ["audit"]
+    build:
+      context: .
+      dockerfile: Dockerfile.lighthouse
+    image: neas-lighthouse:local
+    entrypoint: ["lighthouse"]
+    command:
+      - "${AUDIT_URL:-https://www.nextedge-access-solutions.com}"
+      - "--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage"
+      - "--output=json"
+      - "--output-path=/reports/lighthouse.json"
+    volumes:
+      - ./reports:/reports
+    networks: [neas-internal]
+
   activepieces:
     image: ghcr.io/activepieces/activepieces:0.95.0
     restart: unless-stopped
