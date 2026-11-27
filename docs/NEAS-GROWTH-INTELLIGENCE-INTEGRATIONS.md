@@ -4,15 +4,13 @@
 
 NEAS APEX remains the orchestration and governance layer. The public website remains the publishing destination. Third-party tools run as separate services or CI jobs; their source code is not copied into either production application.
 
-| Capability | Component | Integration boundary | Current rollout state |
-|---|---|---|---|
-| Commercial intelligence | APEX GIIE | Existing hourly collector and Supabase-backed research queue | Existing engine merged; source leads remain unverified |
-| Workflow automation | Activepieces | Signed server-to-server webhook from APEX | Optional adapter added; service and webhook not provisioned |
-| CRM | Twenty | Activepieces API action after human qualification | Separate deployment and API credentials required |
-| Viral research | Viral Scout | Scheduled export / reviewed JSON into GIIE ingestion | Separate Python app; free-source-only configuration required |
-| Cross-platform trends | AI Trends Tracker | Reviewed JSON into GIIE ingestion | License and upstream dependency review required |
-| Technical SEO | Lighthouse | Website pull-request CI audit | Added in the website integration PR |
-| CMS intake | Website CMS | Existing signed APEX bridge | Separate draft PRs #93 and #273; Pending Review only |
+- **Commercial intelligence:** APEX GIIE, using the existing hourly collector and Supabase-backed research queue. The engine is merged; source leads remain unverified.
+- **Workflow automation:** Activepieces, using a signed server-to-server webhook from APEX. The optional sender is added; the service and webhook are not provisioned.
+- **CRM:** Twenty, called by an Activepieces workflow only after human qualification. Separate deployment and API credentials are required.
+- **Viral research:** Viral Scout, as a separate Python app with scheduled export or reviewed JSON into GIIE ingestion. Free-source-only configuration is required.
+- **Cross-platform trends:** AI Trends Tracker, using reviewed JSON into GIIE ingestion. Licensing and upstream dependencies require review.
+- **Technical SEO:** Lighthouse, through website pull-request CI.
+- **CMS intake:** Website CMS, through the existing signed APEX bridge. Draft PRs #93 and #273 create Pending Review content only.
 
 ## Activepieces webhook
 
@@ -45,11 +43,11 @@ A later, separately approved flow may create a Twenty CRM record only after a NE
 
 ## Licensing and dependency review
 
-- Activepieces core repository license: MIT outside the documented enterprise directories; do not copy `packages/ee/` or enterprise API directories without reviewing their separate license.
-- Twenty: primarily AGPLv3 with an application exception; enterprise-marked files are commercial. Keep Twenty as a separately deployed service and integrate through its published API. Review AGPL obligations before modifying or distributing the Twenty server.
-- Viral Scout: MIT. Its README describes optional Apify-based Instagram/TikTok/Google Trends and ad research features that may incur usage charges. Keep paid Apify features disabled unless separately approved.
-- AI Trends Tracker fork: no LICENSE file is present in this fork. Do not redistribute or deploy it commercially until the upstream repository license and dependency terms are confirmed. Its README also lists paid API-key options; use only approved free sources until costs are authorized.
-- Lighthouse: Apache-2.0. Use the Lighthouse CLI in CI rather than vendoring the full repository into the website.
+- **Activepieces:** The core repository license is MIT outside documented enterprise directories. Do not copy `packages/ee/` or enterprise API directories without reviewing their separate license.
+- **Twenty:** Primarily AGPLv3 with an application exception; enterprise-marked files are commercial. Keep Twenty as a separately deployed service and integrate through its published API. Review AGPL obligations before modifying or distributing the Twenty server.
+- **Viral Scout:** MIT. Its README describes optional Apify-based Instagram/TikTok/Google Trends and ad research features that may incur usage charges. Keep paid Apify features disabled unless separately approved.
+- **AI Trends Tracker fork:** No LICENSE file is present in this fork. Do not redistribute or deploy it commercially until the upstream repository license and dependency terms are confirmed. Its README also lists paid API-key options; use only approved free sources until costs are authorized.
+- **Lighthouse:** Apache-2.0. Use the Lighthouse CLI in CI rather than vendoring the full repository into the website.
 
 ## Existing infrastructure finding
 
