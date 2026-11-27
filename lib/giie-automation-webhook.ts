@@ -27,6 +27,7 @@ export function resolveActivepiecesWebhook(raw: string): URL {
   } catch {
     throw new Error("Activepieces webhook URL is invalid.");
   }
+
   if (
     endpoint.protocol !== "https:" ||
     endpoint.username ||
@@ -38,8 +39,11 @@ export function resolveActivepiecesWebhook(raw: string): URL {
     endpoint.hostname.endsWith(".localhost") ||
     endpoint.hostname.endsWith(".local")
   ) {
-    throw new Error("Activepieces webhook must be a public HTTPS URL without credentials.");
+    throw new Error(
+      "Activepieces webhook must be a public HTTPS URL without credentials.",
+    );
   }
+
   return endpoint;
 }
 
@@ -93,21 +97,34 @@ export function buildCommercialAlertEvent(
 export async function notifyActivepiecesOfCommercialSignals(
   signals: CommercialSignal[],
 ): Promise<ActivepiecesDeliveryResult> {
-  const rawEndpoint = process.env.ACTIVEPIECES_GIIE_WEBHOOK_URL?.trim() ?? "";
-  if (!rawEndpoint) return { status: "skipped", reason: "not_configured" };
+  const rawEndpoint =
+    process.env.ACTIVEPIECES_GIIE_WEBHOOK_URL?.trim() ?? "";
+  if (!rawEndpoint) {
+    return { status: "skipped", reason: "not_configured" };
+  }
 
   const secret = process.env.ACTIVEPIECES_GIIE_WEBHOOK_SECRET ?? "";
   if (secret.length < 32) {
-    throw new Error("Activepieces webhook signing secret must contain at least 32 characters.");
+    throw new Error(
+      "Activepieces webhook signing secret must contain at least 32 characters.",
+    );
   }
 
   const endpoint = resolveActivepiecesWebhook(rawEndpoint);
   const event = buildCommercialAlertEvent(signals);
-  if (!event.signals.length) return { status: "skipped", reason: "not_configured" };
+  if (!event.signals.length) {
+    return { status: "skipped", reason: "not_configured" };
+  }
 
   const serializedBody = JSON.stringify(event);
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const signature = signActivepiecesEvent(secret, timestamp, event.eventId, serializedBody);
+  const signature = signActivepiecesEvent(
+    secret,
+    timestamp,
+    event.eventId,
+    serializedBody,
+  );
+
   const response = await fetch(endpoint, {
     method: "POST",
     redirect: "error",
@@ -122,8 +139,16 @@ export async function notifyActivepiecesOfCommercialSignals(
     cache: "no-store",
     signal: AbortSignal.timeout(8_000),
   });
+
   if (!response.ok) {
-    throw new Error(`Activepieces webhook rejected the GIIE event (HTTP ${response.status}).`);
+    throw new Error(
+      `Activepieces webhook rejected the GIIE event (HTTP ${response.status}).`,
+    );
   }
-  return { status: "delivered", eventId: event.eventId, signalCount: event.signals.length };
+
+  return {
+    status: "delivered",
+    eventId: event.eventId,
+    signalCount: event.signals.length,
+  };
 }
