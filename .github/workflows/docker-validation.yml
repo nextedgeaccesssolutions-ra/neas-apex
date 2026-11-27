@@ -1,0 +1,40 @@
+name: Docker validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'compose.yaml'
+      - '.dockerignore'
+      - '.env.docker.example'
+      - 'next.config.mjs'
+      - '.github/workflows/docker-validation.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'app/**'
+      - 'lib/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose configuration without starting services
+        run: docker compose --env-file .env.docker.example config --quiet
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build APEX container (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: neas-apex:pr-validation
