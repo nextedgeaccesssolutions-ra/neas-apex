@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   distDir: process.env.NEXT_DIST_DIR || '.next',
   env: { GLADOS_BRAND: process.env.GLADOS_BRAND ?? '' },
   serverExternalPackages: ['better-sqlite3', 'node-ical', 'nodemailer'],

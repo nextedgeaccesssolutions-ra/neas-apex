@@ -1,0 +1,206 @@
+name: neas-intelligence
+
+services:
+  apex:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: neas-apex:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APEX_PORT:-3001}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
+      GIIE_COMMERCIAL_COLLECTION_ENABLED: "false"
+    networks: [neas-internal]
+
+  lighthouse:
+    profiles: ["audit"]
+    build:
+      context: .
+      dockerfile: Dockerfile.lighthouse
+    image: neas-lighthouse:local
+    entrypoint: ["lighthouse"]
+    command:
+      - "${AUDIT_URL:-https://www.nextedge-access-solutions.com}"
+      - "--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage"
+      - "--output=json"
+      - "--output-path=/reports/lighthouse.json"
+    volumes:
+      - ./reports:/reports
+    networks: [neas-internal]
+
+  activepieces:
+    image: ghcr.io/activepieces/activepieces:0.95.0
+    restart: unless-stopped
+    depends_on:
+      activepieces-db:
+        condition: service_healthy
+      activepieces-redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${ACTIVEPIECES_PORT:-8080}:80"
+    environment:
+      AP_CONTAINER_TYPE: APP
+      AP_FRONTEND_URL: ${AP_FRONTEND_URL:-http://localhost:8080}
+      AP_ENCRYPTION_KEY: ${AP_ENCRYPTION_KEY:?Generate AP_ENCRYPTION_KEY before starting}
+      AP_JWT_SECRET: ${AP_JWT_SECRET:?Generate AP_JWT_SECRET before starting}
+      AP_EXECUTION_MODE: SANDBOX_CODE_ONLY
+      AP_POSTGRES_HOST: activepieces-db
+      AP_POSTGRES_PORT: "5432"
+      AP_POSTGRES_DATABASE: activepieces
+      AP_POSTGRES_USERNAME: activepieces
+      AP_POSTGRES_PASSWORD: ${AP_POSTGRES_PASSWORD:?Set AP_POSTGRES_PASSWORD}
+      AP_REDIS_HOST: activepieces-redis
+      AP_REDIS_PORT: "6379"
+      AP_REDIS_TYPE: STANDALONE
+    volumes:
+      - activepieces_cache:/usr/src/app/cache
+    networks: [neas-internal]
+
+  activepieces-worker:
+    image: ghcr.io/activepieces/activepieces:0.95.0
+    restart: unless-stopped
+    depends_on:
+      - activepieces
+    environment:
+      AP_CONTAINER_TYPE: WORKER
+      AP_FRONTEND_URL: http://activepieces
+      AP_ENCRYPTION_KEY: ${AP_ENCRYPTION_KEY:?Generate AP_ENCRYPTION_KEY before starting}
+      AP_JWT_SECRET: ${AP_JWT_SECRET:?Generate AP_JWT_SECRET before starting}
+      AP_EXECUTION_MODE: SANDBOX_CODE_ONLY
+      AP_POSTGRES_HOST: activepieces-db
+      AP_POSTGRES_PORT: "5432"
+      AP_POSTGRES_DATABASE: activepieces
+      AP_POSTGRES_USERNAME: activepieces
+      AP_POSTGRES_PASSWORD: ${AP_POSTGRES_PASSWORD:?Set AP_POSTGRES_PASSWORD}
+      AP_REDIS_HOST: activepieces-redis
+      AP_REDIS_PORT: "6379"
+      AP_REDIS_TYPE: STANDALONE
+    volumes:
+      - activepieces_cache:/usr/src/app/cache
+    networks: [neas-internal]
+
+  activepieces-db:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: activepieces
+      POSTGRES_USER: activepieces
+      POSTGRES_PASSWORD: ${AP_POSTGRES_PASSWORD:?Set AP_POSTGRES_PASSWORD}
+    volumes:
+      - activepieces_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U activepieces -d activepieces"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [neas-internal]
+
+  activepieces-redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - activepieces_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [neas-internal]
+
+  twenty:
+    image: twentycrm/twenty:v2.38.1
+    restart: unless-stopped
+    depends_on:
+      twenty-db:
+        condition: service_healthy
+      twenty-redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${TWENTY_PORT:-3000}:3000"
+    environment:
+      NODE_PORT: "3000"
+      SERVER_URL: ${TWENTY_SERVER_URL:-http://localhost:3000}
+      PG_DATABASE_URL: postgres://twenty:${TWENTY_DB_PASSWORD:?Set TWENTY_DB_PASSWORD}@twenty-db:5432/twenty
+      REDIS_URL: redis://twenty-redis:6379
+      STORAGE_TYPE: LOCAL
+      ENCRYPTION_KEY: ${TWENTY_ENCRYPTION_KEY:?Set TWENTY_ENCRYPTION_KEY}
+      FALLBACK_ENCRYPTION_KEY: ${TWENTY_FALLBACK_ENCRYPTION_KEY:?Set TWENTY_FALLBACK_ENCRYPTION_KEY}
+      APP_SECRET: ${TWENTY_APP_SECRET:?Set TWENTY_APP_SECRET}
+    volumes:
+      - twenty_local_storage:/app/packages/twenty-server/.local-storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:3000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [neas-internal]
+
+  twenty-worker:
+    image: twentycrm/twenty:v2.38.1
+    restart: unless-stopped
+    command: ["yarn", "worker:prod"]
+    depends_on:
+      twenty:
+        condition: service_healthy
+    environment:
+      PG_DATABASE_URL: postgres://twenty:${TWENTY_DB_PASSWORD:?Set TWENTY_DB_PASSWORD}@twenty-db:5432/twenty
+      SERVER_URL: ${TWENTY_SERVER_URL:-http://twenty:3000}
+      REDIS_URL: redis://twenty-redis:6379
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+      STORAGE_TYPE: LOCAL
+      ENCRYPTION_KEY: ${TWENTY_ENCRYPTION_KEY:?Set TWENTY_ENCRYPTION_KEY}
+      FALLBACK_ENCRYPTION_KEY: ${TWENTY_FALLBACK_ENCRYPTION_KEY:?Set TWENTY_FALLBACK_ENCRYPTION_KEY}
+      APP_SECRET: ${TWENTY_APP_SECRET:?Set TWENTY_APP_SECRET}
+    volumes:
+      - twenty_local_storage:/app/packages/twenty-server/.local-storage
+    networks: [neas-internal]
+
+  twenty-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: twenty
+      POSTGRES_USER: twenty
+      POSTGRES_PASSWORD: ${TWENTY_DB_PASSWORD:?Set TWENTY_DB_PASSWORD}
+    volumes:
+      - twenty_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twenty -d twenty"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [neas-internal]
+
+  twenty-redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - twenty_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [neas-internal]
+
+volumes:
+  activepieces_cache:
+  activepieces_db:
+  activepieces_redis:
+  twenty_local_storage:
+  twenty_db:
+  twenty_redis:
+
+networks:
+  neas-internal:
+    name: neas-internal
