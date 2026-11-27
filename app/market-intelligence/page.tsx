@@ -65,7 +65,7 @@ export default function MarketIntelligencePage() {
     <main style={{minHeight:"100vh",background:"radial-gradient(ellipse at 15% 0%,rgba(202,147,50,.12),transparent 36%),#090807",color:text,padding:"clamp(18px,4vw,52px)",fontFamily:"Inter,system-ui,sans-serif"}}>
       <div style={{maxWidth:1240,margin:"0 auto"}}>
         <nav style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:26}}>
-          <a href="/" style={{color:gold,textDecoration:"none",fontSize:12,letterSpacing:".12em"}}>← NEAS APEX</a>
+          <a href="/" style={{color:gold,textDecoration:"none",fontSize:12,letterSpacing:".12em"}}>← NEAS APEX</a><a href="/market-intelligence/commercial" style={{color:gold,textDecoration:"none",fontSize:12,letterSpacing:".08em"}}>Commercial Opportunity Radar ↗</a>
           <a href="https://github.com/nextedgeaccesssolutions-ra/neas-apex/blob/main/docs/research/PHILIPPINES_ROPE_ACCESS_MARKET_INTELLIGENCE_2026.md" target="_blank" rel="noreferrer" style={{color:gold,fontSize:12}}>Full research methodology & report ↗</a>
         </nav>
         <header style={{marginBottom:28}}>
