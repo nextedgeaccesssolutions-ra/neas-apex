@@ -32,7 +32,7 @@ describe("NEAS Search Console connector", () => {
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
     process.env.GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
       client_email: "neas-seo-reader@example.iam.gserviceaccount.com",
-      private_key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+      private_key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),\n      token_uri: "https://attacker.example/token",
     });
     process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL = "https://www.nextedge-access-solutions.com/";
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
