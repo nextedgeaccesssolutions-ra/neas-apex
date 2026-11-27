@@ -57,8 +57,7 @@ function decodeXml(value: string): string {
     .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 function xmlTag(xml: string, tag: string): string | undefined {
-  const escaped = tag.replace(/[|\\{}()[\]^$+*?.-]/g, "\\$&");
-  const match = xml.match(new RegExp("<" + escaped + "(?:\\s[^>]*)?>([\\s\\S]*?)<\\/" + escaped + ">", "i"));
+  const match = xml.match(new RegExp("<" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)<\\/" + tag + ">", "i"));
   return match?.[1] ? decodeXml(match[1]) : undefined;
 }
 
@@ -73,7 +72,7 @@ export function parseGoogleTrendsRss(xml: string): GoogleTrendItem[] {
     if (rawLink) {
       try {
         const parsed = new URL(rawLink);
-        if (parsed.protocol !== "https:" || !parsed.hostname.endsWith("google.com")) return [];
+        if (parsed.protocol !== "https:" || (parsed.hostname !== "google.com" && !parsed.hostname.endsWith(".google.com"))) return [];
         url = parsed.toString();
       } catch { /* retain canonical Google Trends query URL */ }
     }
