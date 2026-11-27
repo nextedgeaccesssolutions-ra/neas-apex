@@ -6,12 +6,12 @@ This module turns hourly public-web discovery into a searchable, auditable comme
 
 ## Existing integration points
 
-- Search provider: \`lib/giie-connectors.ts\` (Brave Search public-web adapter).
-- Evidence and governance model: \`lib/neas-giie.ts\`.
-- Authentication and permissions: \`lib/neas-workforce-authz.ts\`.
-- Storage: dedicated \`giie_commercial_signals\` and \`giie_commercial_runs\` tables, isolated from confidential project, customer, and workforce records.
-- Read API: \`GET /api/admin/giie/commercial-signals\`, protected by the existing NEAS admin session and \`giie:public:search\` scope.
-- Dashboard: \`/market-intelligence/commercial\`, linked from the existing Market Intelligence page.
+- Search provider: `lib/giie-connectors.ts` (Brave Search public-web adapter).
+- Evidence and governance model: `lib/neas-giie.ts`.
+- Authentication and permissions: `lib/neas-workforce-authz.ts`.
+- Storage: dedicated `giie_commercial_signals` and `giie_commercial_runs` tables, isolated from confidential project, customer, and workforce records.
+- Read API: `GET /api/admin/giie/commercial-signals`, protected by the existing NEAS admin session and `giie:public:search` scope.
+- Dashboard: /market-intelligence/commercial (the existing static Market Intelligence page is left unchanged).
 - Schedule: GitHub Actions hourly cron, with manual dispatch for controlled testing.
 
 ## Commercial coverage
@@ -35,7 +35,7 @@ Each hourly run searches two commercial-intent queries for one group. The comple
 
 ## Scoring
 
-\`commercial_opportunity_priority_v1\` is a transparent 0–100 research-triage heuristic:
+`commercial_opportunity_priority_v1` is a transparent 0–100 research-triage heuristic:
 
 - Commercial intent: up to 35 points.
 - Philippines relevance: up to 15 points.
@@ -50,11 +50,11 @@ The score is not a probability of winning, verified demand, project value, marke
 
 The migration adds:
 
-- \`giie_commercial_signals\`: deduplicated public commercial leads, evidence metadata, score, verification state, recurrence, and publication gate.
-- \`giie_commercial_runs\`: hourly run history and provider warnings.
-- \`upsert_giie_commercial_signals(jsonb)\`: atomic service-role-only upsert that preserves first-seen time and increments recurrence.
+- `giie_commercial_signals`: deduplicated public commercial leads, evidence metadata, score, verification state, recurrence, and publication gate.
+- `giie_commercial_runs`: hourly run history and provider warnings.
+- `upsert_giie_commercial_signals(jsonb)`: atomic service-role-only upsert that preserves first-seen time and increments recurrence.
 
-Both tables use RLS with FORCE ROW LEVEL SECURITY. Active NEAS users can read signals; run history is admin-readable. Anonymous access is revoked. Authenticated users have read-only grants. The RPC is SECURITY INVOKER, has an empty search path, and is executable only by \`service_role\`. The service-role key is used only by server-side GitHub Actions and server-side API code; it must never be placed in a public or \`NEXT_PUBLIC_\` variable.
+Both tables use RLS with FORCE ROW LEVEL SECURITY. Active NEAS users can read signals; run history is admin-readable. Anonymous access is revoked. Authenticated users have read-only grants. The RPC is SECURITY INVOKER, has an empty search path, and is executable only by `service_role`. The service-role key is used only by server-side GitHub Actions and server-side API code; it must never be placed in a public or `NEXT_PUBLIC_` variable.
 
 The current Supabase Data API requires explicit grants for new tables. The migration grants only the required roles; no anonymous access is added.
 
@@ -62,30 +62,30 @@ The current Supabase Data API requires explicit grants for new tables. The migra
 
 The configured policy is automatic only for low-risk, source-cited informational market summaries after all gates pass:
 
-- Evidence class is \`verified-official\`.
+- Evidence class is `verified-official`.
 - At least two independent source domains corroborate the claim.
 - Original source citations are retained.
-- Content type is \`market-summary\`.
+- Content type is `market-summary`.
 
 Company claims, credentials, project references, prices, tenders/bid responses, safety or engineering guidance, and customer communications are never auto-published by this policy.
 
-**CMS boundary:** the inspected NEAS APEX repository contains the Market Intelligence research page and GIIE APIs, but no verified website CMS publishing adapter. This PR therefore implements the publication eligibility gate and records every raw search signal as \`blocked_unverified\`; it does not pretend to publish to the public NEAS website. A CMS adapter must be connected and tested in a separate change before external auto-publication can be enabled.
+**CMS boundary:** the inspected NEAS APEX repository contains the Market Intelligence research page and GIIE APIs, but no verified website CMS publishing adapter. This PR therefore implements the publication eligibility gate and records every raw search signal as `blocked_unverified`; it does not pretend to publish to the public NEAS website. A CMS adapter must be connected and tested in a separate change before external auto-publication can be enabled.
 
 ## Setup after PR review
 
 Repository Actions secrets required:
 
-- \`BRAVE_SEARCH_API_KEY\`
-- \`SUPABASE_URL\`
-- \`SUPABASE_SERVICE_ROLE_KEY\`
+- `BRAVE_SEARCH_API_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-Apply \`supabase/migrations/202611270010_giie_commercial_intelligence.sql\` to the NEAS Supabase project before running the collector. Do not paste service-role credentials into chat or commit them.
+Apply `supabase/migrations/202611270010_giie_commercial_intelligence.sql` to the NEAS Supabase project before running the collector. Do not paste service-role credentials into chat or commit them.
 
 The workflow runs:
-\`npm ci\`
-\`npx tsx scripts/giie-commercial-collector.ts\`
+`npm ci`
+`npx tsx scripts/giie-commercial-collector.ts`
 
-After merge and secret configuration, dispatch the workflow manually once. Confirm a successful row in \`giie_commercial_runs\`, signal records in \`giie_commercial_signals\`, and the dashboard response at \`/api/admin/giie/commercial-signals\`.
+After merge and secret configuration, dispatch the workflow manually once. Confirm a successful row in `giie_commercial_runs`, signal records in `giie_commercial_signals`, and the dashboard response at `/api/admin/giie/commercial-signals`.
 
 ## Production safety
 
