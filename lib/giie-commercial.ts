@@ -172,7 +172,10 @@ export function scoreCommercialSignal(
   const text = result.title + " " + result.description;
   const signalType = classifyCommercialSignal(text);
   const published = parsePublishedAt(result.publishedAt);
-  const ageDays = published ? Math.max(0, (now.getTime() - Date.parse(published)) / 86_400_000) : null;
+  const publishedMs = published ? Date.parse(published) : Number.NaN;
+  const ageDays = Number.isFinite(publishedMs) && publishedMs <= now.getTime()
+    ? (now.getTime() - publishedMs) / 86_400_000
+    : null;
   const commercialPoints: Record<CommercialSignalType, number> = {
     "contract-award": 35,
     "tender-procurement": 35,
