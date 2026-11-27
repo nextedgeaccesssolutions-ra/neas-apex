@@ -1,0 +1,50 @@
+name: NEAS GIIE Philippines Trend Intelligence
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-giie-ph-trend-collector
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Collect public Philippines trend signals
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GIIE_TREND_COLLECTION_ENABLED: "true"
+      BRAVE_SEARCH_API_KEY: \${{ secrets.BRAVE_SEARCH_API_KEY }}
+      SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in BRAVE_SEARCH_API_KEY SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+            if [[ -z "\${!name:-}" ]]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              exit 1
+            fi
+          done
+
+      - name: Checkout NEAS APEX
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Collect and persist Philippine trends
+        run: npx tsx scripts/giie-ph-trend-collector.ts
