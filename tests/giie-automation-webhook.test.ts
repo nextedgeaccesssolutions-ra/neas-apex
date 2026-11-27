@@ -28,7 +28,8 @@ const signal = (
   verification_status: "unverified",
   lead_status: "new",
   publication_status: "blocked_unverified",
-  publication_reason: "Source verification and independent corroboration are pending.",
+  publication_reason:
+    "Source verification and independent corroboration are pending.",
   ...overrides,
 });
 
@@ -85,9 +86,7 @@ describe("Activepieces GIIE webhook safety", () => {
       "event-123",
     );
 
-    expect(event.eventType).toBe(
-      "neas.giie.commercial.signals.discovered",
-    );
+    expect(event.eventType).toBe("neas.giie.commercial.signals.discovered");
     expect(event.policy).toBe("unverified-alert-only");
     expect(event.signals).toHaveLength(1);
     expect(event.signals[0].verification_status).toBe("unverified");
