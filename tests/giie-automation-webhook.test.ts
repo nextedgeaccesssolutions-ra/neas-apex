@@ -6,7 +6,9 @@ import {
   signActivepiecesEvent,
 } from "../lib/giie-automation-webhook";
 
-const signal = (overrides: Partial<CommercialSignal> = {}): CommercialSignal => ({
+const signal = (
+  overrides: Partial<CommercialSignal> = {},
+): CommercialSignal => ({
   signal_key: "a".repeat(64),
   title: "Philippines offshore wind maintenance project",
   source_url: "https://doe.gov.ph/projects/offshore-wind",
@@ -36,7 +38,10 @@ afterEach(() => {
 
 describe("Activepieces GIIE webhook safety", () => {
   it("accepts a public HTTPS webhook URL", () => {
-    expect(resolveActivepiecesWebhook("https://automation.example.com/api/v1/webhooks/abc").protocol).toBe("https:");
+    const endpoint = resolveActivepiecesWebhook(
+      "https://automation.example.com/api/v1/webhooks/abc",
+    );
+    expect(endpoint.protocol).toBe("https:");
   });
 
   it.each([
@@ -51,21 +56,38 @@ describe("Activepieces GIIE webhook safety", () => {
   });
 
   it("signs the exact timestamp, request id and serialized body", () => {
-    const signature = signActivepiecesEvent("s".repeat(32), "1795737600", "event-123", '{"ok":true}');
+    const secret = "s".repeat(32);
+    const body = '{"ok":true}';
+    const signature = signActivepiecesEvent(
+      secret,
+      "1795737600",
+      "event-123",
+      body,
+    );
+
     expect(signature).toMatch(/^[a-f0-9]{64}$/);
-    expect(signature).not.toBe(signActivepiecesEvent("s".repeat(32), "1795737601", "event-123", '{"ok":true}'));
+    expect(signature).not.toBe(
+      signActivepiecesEvent(secret, "1795737601", "event-123", body),
+    );
   });
 
   it("emits only unverified, blocked public research signals for alerting", () => {
     const event = buildCommercialAlertEvent(
       [
         signal(),
-        signal({ signal_key: "b".repeat(64), verification_status: "verified", publication_status: "eligible_for_auto" }),
+        signal({
+          signal_key: "b".repeat(64),
+          verification_status: "verified",
+          publication_status: "eligible_for_auto",
+        }),
       ],
       new Date("2026-11-27T00:00:00.000Z"),
       "event-123",
     );
-    expect(event.eventType).toBe("neas.giie.commercial.signals.discovered");
+
+    expect(event.eventType).toBe(
+      "neas.giie.commercial.signals.discovered",
+    );
     expect(event.policy).toBe("unverified-alert-only");
     expect(event.signals).toHaveLength(1);
     expect(event.signals[0].verification_status).toBe("unverified");
