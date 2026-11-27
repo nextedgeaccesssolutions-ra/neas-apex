@@ -72,7 +72,7 @@ async function accessToken(account: ServiceAccount): Promise<string> {
   const claims = base64Url(JSON.stringify({
     iss: account.client_email,
     scope: GOOGLE_SCOPE,
-    aud: account.token_uri || GOOGLE_TOKEN_URL,
+    aud: GOOGLE_TOKEN_URL,
     iat: now,
     exp: now + 3600,
   }));
@@ -81,7 +81,7 @@ async function accessToken(account: ServiceAccount): Promise<string> {
   signer.update(unsigned);
   signer.end();
   const assertion = unsigned + "." + signer.sign(account.private_key!, "base64url");
-  const response = await fetch(account.token_uri || GOOGLE_TOKEN_URL, {
+  const response = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
     body: new URLSearchParams({
