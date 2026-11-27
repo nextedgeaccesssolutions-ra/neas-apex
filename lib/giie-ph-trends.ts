@@ -104,8 +104,8 @@ export function scoreSearchDiscovery(result: Pick<GiieSearchResult, "title" | "d
   if (/\b(project|investment|launch|expansion|contract|tender|facility|plant|development|market)\b/i.test(text)) score += 20;
   if (result.publishedAt) {
     const published = Date.parse(result.publishedAt);
-    if (Number.isFinite(published)) {
-      const ageDays = Math.max(0, (now.getTime() - published) / 86_400_000);
+    if (Number.isFinite(published) && published <= now.getTime()) {
+      const ageDays = (now.getTime() - published) / 86_400_000;
       score += ageDays <= 3 ? 25 : ageDays <= 14 ? 15 : ageDays <= 45 ? 5 : 0;
     }
   }
@@ -205,51 +205,78 @@ async function persistObservations(rows: readonly TrendObservation[]): Promise<n
 }
 
 export async function runPhilippinesTrendCollection(now = new Date()): Promise<{
-  status: "completed" | "partial"; topicGroup: string; queries: string[]; googleTrendCount: number;
-  webResultCount: number; persistedCount: number; warnings: string[];
+  status: "completed" | "partial";
+  topicGroup: string;
+  queries: string[];
+  googleTrendCount: number;
+  webResultCount: number;
+  persistedCount: number;
+  warnings: string[];
 }> {
-  if (process.env.GIIE_TREND_COLLECTION_ENABLED !== "true") throw new Error("Philippines trend collection is disabled. Set GIIE_TREND_COLLECTION_ENABLED=true.");
+  if (process.env.GIIE_TREND_COLLECTION_ENABLED !== "true") {
+    throw new Error("Philippines trend collection is disabled. Set GIIE_TREND_COLLECTION_ENABLED=true.");
+  }
+
   const topicGroup = getHourlyTopicGroup(now);
   const warnings: string[] = [];
-  const [googleResult, searchResults] = await Promise.all([
-    fetchGoogleTrendsFeed().then((items) => ({ items })).catch((error) => {
-      warnings.push(error instanceof Error ? error.message : "Google Trends feed failed.");
-      return { items: [] as GoogleTrendItem[] };
-    }),
-    Promise.all(topicGroup.queries.map((query) =>
-      searchPublicWeb(query, 5).then((response) => response.results).catch((error) => {
-        warnings.push("Brave Search: " + (error instanceof Error ? error.message : "provider request failed."));
-        return [] as GiieSearchResult[];
-      }),
-    )),
-  ]);
-  const observations = [...buildGoogleTrendObservations(googleResult.items, now), ...buildSearchObservations(searchResults.flat(), topicGroup, now)];
-  if (!observations.length) throw new Error("Trend collection returned no observations. " + warnings.join(" "));
   const runRows = await databaseRequest<Array<{ id: string }>>("giie_trend_runs?select=id", "POST", [{
-    status: "running", topic_group: topicGroup.id, queries: [...topicGroup.queries],
-    google_trend_count: googleResult.items.length,
-    web_result_count: searchResults.reduce((sum, group) => sum + group.length, 0), started_at: now.toISOString(),
+    status: "running",
+    topic_group: topicGroup.id,
+    queries: [...topicGroup.queries],
+    started_at: now.toISOString(),
   }]);
   const runId = runRows[0]?.id;
   if (!runId) throw new Error("Trend run audit record could not be created.");
+
   try {
+    const [googleResult, searchResults] = await Promise.all([
+      fetchGoogleTrendsFeed().then((items) => ({ items })).catch((error) => {
+        warnings.push(error instanceof Error ? error.message : "Google Trends feed failed.");
+        return { items: [] as GoogleTrendItem[] };
+      }),
+      Promise.all(topicGroup.queries.map((query) =>
+        searchPublicWeb(query, 5).then((response) => response.results).catch((error) => {
+          warnings.push("Brave Search: " + (error instanceof Error ? error.message : "provider request failed."));
+          return [] as GiieSearchResult[];
+        }),
+      )),
+    ]);
+
+    const observations = [
+      ...buildGoogleTrendObservations(googleResult.items, now),
+      ...buildSearchObservations(searchResults.flat(), topicGroup, now),
+    ];
+    if (!observations.length) {
+      throw new Error("Trend collection returned no observations. " + warnings.join(" "));
+    }
+
     const persistedCount = await persistObservations(observations);
     const status = warnings.length ? "partial" as const : "completed" as const;
     const patch = new URLSearchParams({ id: "eq." + runId, select: "id" });
     await databaseRequest("giie_trend_runs?" + patch.toString(), "PATCH", {
-      status, completed_at: new Date().toISOString(), persisted_count: persistedCount,
+      status,
+      completed_at: new Date().toISOString(),
+      google_trend_count: googleResult.items.length,
+      web_result_count: searchResults.reduce((sum, group) => sum + group.length, 0),
+      persisted_count: persistedCount,
       warning_summary: warnings.join("\n").slice(0, 2_000) || null,
     });
+
     return {
-      status, topicGroup: topicGroup.id, queries: [...topicGroup.queries],
-      googleTrendCount: googleResult.items.length, webResultCount: searchResults.reduce((sum, group) => sum + group.length, 0),
-      persistedCount, warnings,
+      status,
+      topicGroup: topicGroup.id,
+      queries: [...topicGroup.queries],
+      googleTrendCount: googleResult.items.length,
+      webResultCount: searchResults.reduce((sum, group) => sum + group.length, 0),
+      persistedCount,
+      warnings,
     };
   } catch (error) {
     const patch = new URLSearchParams({ id: "eq." + runId, select: "id" });
     await databaseRequest("giie_trend_runs?" + patch.toString(), "PATCH", {
-      status: "failed", completed_at: new Date().toISOString(),
-      warning_summary: (error instanceof Error ? error.message : "Trend persistence failed.").slice(0, 2_000),
+      status: "failed",
+      completed_at: new Date().toISOString(),
+      warning_summary: (error instanceof Error ? error.message : "Trend collection failed.").slice(0, 2_000),
     }).catch(() => undefined);
     throw error;
   }
