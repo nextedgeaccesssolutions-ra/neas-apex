@@ -69,7 +69,7 @@ The configured policy is automatic only for low-risk, source-cited informational
 
 Company claims, credentials, project references, prices, tenders/bid responses, safety or engineering guidance, and customer communications are never auto-published by this policy.
 
-**CMS boundary:** the inspected NEAS APEX repository contains the Market Intelligence research page and GIIE APIs, but no verified website CMS publishing adapter. This PR therefore implements the publication eligibility gate and records every raw search signal as `blocked_unverified`; it does not pretend to publish to the public NEAS website. A CMS adapter must be connected and tested in a separate change before external auto-publication can be enabled.
+**CMS boundary:** the connected NextEdge website repository contains a separate public-site CMS with a role-gated tRPC workflow: editors save drafts and submit them for review, reviewers approve, and publishers publish. The public page renderer reads published pages only. NEAS APEX does not currently have a verified service-to-service CMS connector. This PR therefore implements the publication eligibility gate and records every raw search signal as `blocked_unverified`; it does not bypass the CMS publisher role or claim to publish to the public website. A scoped, authenticated connector in the website repository and a corresponding APEX sender must be implemented and tested separately before external auto-publication can be enabled.
 
 ## Setup after PR review
 
