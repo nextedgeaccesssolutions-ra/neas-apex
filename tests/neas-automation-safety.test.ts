@@ -8,6 +8,9 @@ const read = (path: string) =>
 const autofix = read(".github/workflows/autofix.yml");
 const dependency = read(".github/workflows/dependency-automerge.yml");
 const widget = read("components/FreeVoiceAIWidget.tsx");
+const tsconfig = JSON.parse(read("tsconfig.json")) as {
+  compilerOptions?: { jsx?: string };
+};
 
 describe("NEAS APEX workflow safety", () => {
   it("probes the active production alias and a server-rendered voice landmark", () => {
@@ -52,5 +55,9 @@ describe("NEAS APEX workflow safety", () => {
     )?.[1];
     expect(schedule).toBe("*/30 * * * *");
     expect(schedule?.trim().split(/\s+/)).toHaveLength(5);
+  });
+
+  it("keeps the TypeScript JSX runtime aligned with Next.js 16 build requirements", () => {
+    expect(tsconfig.compilerOptions?.jsx).toBe("react-jsx");
   });
 });
