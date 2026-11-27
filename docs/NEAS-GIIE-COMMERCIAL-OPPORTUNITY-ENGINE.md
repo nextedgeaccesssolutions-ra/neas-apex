@@ -17,6 +17,7 @@ This module turns hourly public-web discovery into a searchable, auditable comme
 ## Commercial coverage
 
 Twelve rotating industry groups:
+
 1. Energy and utilities
 2. Construction and infrastructure
 3. Manufacturing and mining
@@ -35,6 +36,7 @@ Each hourly run searches two commercial-intent queries for one group. The comple
 ## Scoring
 
 \`commercial_opportunity_priority_v1\` is a transparent 0–100 research-triage heuristic:
+
 - Commercial intent: up to 35 points.
 - Philippines relevance: up to 15 points.
 - Project specificity: up to 15 points.
@@ -47,6 +49,7 @@ The score is not a probability of winning, verified demand, project value, marke
 ## Data model and security
 
 The migration adds:
+
 - \`giie_commercial_signals\`: deduplicated public commercial leads, evidence metadata, score, verification state, recurrence, and publication gate.
 - \`giie_commercial_runs\`: hourly run history and provider warnings.
 - \`upsert_giie_commercial_signals(jsonb)\`: atomic service-role-only upsert that preserves first-seen time and increments recurrence.
@@ -58,6 +61,7 @@ The current Supabase Data API requires explicit grants for new tables. The migra
 ## Automatic publishing policy
 
 The configured policy is automatic only for low-risk, source-cited informational market summaries after all gates pass:
+
 - Evidence class is \`verified-official\`.
 - At least two independent source domains corroborate the claim.
 - Original source citations are retained.
@@ -70,6 +74,7 @@ Company claims, credentials, project references, prices, tenders/bid responses, 
 ## Setup after PR review
 
 Repository Actions secrets required:
+
 - \`BRAVE_SEARCH_API_KEY\`
 - \`SUPABASE_URL\`
 - \`SUPABASE_SERVICE_ROLE_KEY\`
