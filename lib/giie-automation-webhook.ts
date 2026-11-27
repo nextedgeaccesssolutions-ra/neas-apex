@@ -97,11 +97,8 @@ export function buildCommercialAlertEvent(
 export async function notifyActivepiecesOfCommercialSignals(
   signals: CommercialSignal[],
 ): Promise<ActivepiecesDeliveryResult> {
-  const rawEndpoint =
-    process.env.ACTIVEPIECES_GIIE_WEBHOOK_URL?.trim() ?? "";
-  if (!rawEndpoint) {
-    return { status: "skipped", reason: "not_configured" };
-  }
+  const rawEndpoint = process.env.ACTIVEPIECES_GIIE_WEBHOOK_URL?.trim() ?? "";
+  if (!rawEndpoint) return { status: "skipped", reason: "not_configured" };
 
   const secret = process.env.ACTIVEPIECES_GIIE_WEBHOOK_SECRET ?? "";
   if (secret.length < 32) {
@@ -112,9 +109,7 @@ export async function notifyActivepiecesOfCommercialSignals(
 
   const endpoint = resolveActivepiecesWebhook(rawEndpoint);
   const event = buildCommercialAlertEvent(signals);
-  if (!event.signals.length) {
-    return { status: "skipped", reason: "not_configured" };
-  }
+  if (!event.signals.length) return { status: "skipped", reason: "not_configured" };
 
   const serializedBody = JSON.stringify(event);
   const timestamp = Math.floor(Date.now() / 1000).toString();
