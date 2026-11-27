@@ -2,19 +2,19 @@
 
 **Status: proven** — one internal draft completed end-to-end by the shared worker.
 
-| Field | Value |
-| --- | --- |
-| Agent | `accounts-payable` (FIN, `draft_only`, enabled) |
-| Task | `72964447-fb5f-4e0b-8203-570a54ebeb01` |
-| Idempotency key | `pilot-20261124-002b-accounts-payable` |
-| Operation | `draft_internal` — internal analysis only, `requires_approval = false` |
-| Attempts | 1 of 3 |
-| Completed | 2026-11-24 07:10 UTC |
-| Model reported by worker | `gemini-3.5-flash-lite` |
-| Output | 3,159 characters, non-empty `output.text` |
-| Completion event | `aiw_task_events`: `task_completed` / actor `system` |
-| Audit row | present for the task (`aiw_audit_events`, 1 row) |
-| Runtime status | worker set `idle`, `last_execution_at` 07:10 — no manual status write |
+| Field                    | Value                                                                  |
+| ------------------------ | ---------------------------------------------------------------------- |
+| Agent                    | `accounts-payable` (FIN, `draft_only`, enabled)                        |
+| Task                     | `72964447-fb5f-4e0b-8203-570a54ebeb01`                                 |
+| Idempotency key          | `pilot-20261124-002b-accounts-payable`                                 |
+| Operation                | `draft_internal` — internal analysis only, `requires_approval = false` |
+| Attempts                 | 1 of 3                                                                 |
+| Completed                | 2026-11-24 07:10 UTC                                                   |
+| Model reported by worker | `gemini-3.5-flash-lite`                                                |
+| Output                   | 3,159 characters, non-empty `output.text`                              |
+| Completion event         | `aiw_task_events`: `task_completed` / actor `system`                   |
+| Audit row                | present for the task (`aiw_audit_events`, 1 row)                       |
+| Runtime status           | worker set `idle`, `last_execution_at` 07:10 — no manual status write  |
 
 ## What this proves
 
