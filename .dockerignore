@@ -6,12 +6,19 @@ npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 coverage
+test-results
+playwright-report
 .vscode
 .idea
 .DS_Store
+
+# Environment files: keep only documented examples in the build context.
 .env
 .env.*
 !.env.example
+!.env.docker.example
+
+# Private keys, certificates, and logs must never enter the Docker build context.
 *.pem
 *.key
 *.crt
