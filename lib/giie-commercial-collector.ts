@@ -1,4 +1,5 @@
 import { searchPublicWeb } from "./giie-connectors";
+import { notifyActivepiecesOfCommercialSignals } from "./giie-automation-webhook";
 import {
   buildCommercialSignals,
   getHourlyCommercialTopicGroup,
@@ -134,6 +135,16 @@ export async function runCommercialIntelligenceCollection(
       "POST",
       { p_signals: signals },
     );
+
+    // Optional internal alert only. The payload is explicitly unverified and
+    // blocked from publication; webhook failures never roll back collection.
+    try {
+      await notifyActivepiecesOfCommercialSignals(signals);
+    } catch {
+      warnings.push(
+        "Activepieces notification delivery failed; commercial signals remain stored and unpublished.",
+      );
+    }
     const status = warnings.some(
       (warning) => !warning.startsWith("Search results are discovery leads"),
     )
