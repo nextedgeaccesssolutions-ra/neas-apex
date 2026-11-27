@@ -124,7 +124,7 @@ function Clock() {
           code: typeof weatherCode === "number" ? weatherCode : null,
           city: data.city?.trim() || "Your town",
         });
-      } catch (error) {
+      } catch {
         if (!controller.signal.aborted) {
           // Weather is supplemental; keep the clock usable when the endpoint
           // is unavailable and avoid noisy console errors for visitors.
