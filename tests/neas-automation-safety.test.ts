@@ -7,6 +7,7 @@ const read = (path: string) =>
 
 const autofix = read(".github/workflows/autofix.yml");
 const dependency = read(".github/workflows/dependency-automerge.yml");
+const dependabotConfig = read(".github/dependabot.yml");
 const widget = read("components/FreeVoiceAIWidget.tsx");
 const tsconfig = JSON.parse(read("tsconfig.json")) as {
   compilerOptions?: { jsx?: string };
@@ -47,6 +48,12 @@ describe("NEAS APEX workflow safety", () => {
     expect(dependency).toContain("pull_request_target");
     expect(dependency).toContain("independent human reviewer");
     expect(dependency).not.toContain("gh pr merge --auto");
+  });
+
+  it("omits empty Dependabot exclude-patterns that violate the schema", () => {
+    expect(dependabotConfig).not.toMatch(
+      /^\s*exclude-patterns:\s*\[\s*\]\s*$/m,
+    );
   });
 
   it("keeps the scheduled production probe on a valid five-field cron expression", () => {

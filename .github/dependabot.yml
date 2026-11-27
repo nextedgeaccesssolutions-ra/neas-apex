@@ -14,10 +14,9 @@ updates:
     groups:
       neas-minor-patch:
         patterns: ["*"]
-        exclude-patterns: []
-        # Dependabot still splits majors out of groups by default when
-        # grouped-update types are unspecified; the automerge workflow below
-        # additionally only merges version-update:semver-patch.
+        # Dependabot splits major updates out when grouped-update types are
+        # unspecified. The repository dependency workflow requests independent
+        # human review and never auto-merges.
     open-pull-requests-limit: 5
     labels: ["dependencies", "automation"]
     commit-message:
