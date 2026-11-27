@@ -78,6 +78,11 @@ describe("Philippine trend scoring", () => {
       description: "Old reference",
       publishedAt: "2025-01-01T00:00:00.000Z",
     }, now));
+    expect(scoreSearchDiscovery({
+      title: "Philippines wind project",
+      description: "Future-dated source",
+      publishedAt: "2027-01-01T00:00:00.000Z",
+    }, now)).toBe(60);
   });
 
   it("stores stable keys and explicit scoring methods for observations", () => {
