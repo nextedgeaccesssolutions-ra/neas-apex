@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 
 type Signal = {
   id: string;
@@ -29,7 +29,7 @@ const industries = [
 
 const gold = "#EBC07E";
 const muted = "#b7aa97";
-const panel: React.CSSProperties = {
+const panel: CSSProperties = {
   background: "rgba(255,255,255,.035)",
   border: "1px solid rgba(235,192,126,.16)",
   borderRadius: 16,
