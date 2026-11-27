@@ -141,7 +141,9 @@ export async function runCommercialIntelligenceCollection(
     try {
       await notifyActivepiecesOfCommercialSignals(signals);
     } catch {
-      warnings.push("Activepieces notification delivery failed; commercial signals remain stored and unpublished.");
+      warnings.push(
+        "Activepieces notification delivery failed; commercial signals remain stored and unpublished.",
+      );
     }
     const status = warnings.some(
       (warning) => !warning.startsWith("Search results are discovery leads"),
