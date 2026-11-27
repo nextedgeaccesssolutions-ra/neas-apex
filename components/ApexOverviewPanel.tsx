@@ -14,19 +14,19 @@
  */
 
 import { useEffect, useState } from "react";
-import { Sparkles, Instagram, Facebook, Linkedin, Youtube, ArrowUpRight } from "lucide-react";
+import { Globe, ArrowUpRight } from "lucide-react";
 
 const ACCENT = "#d4a64f";
 const WCODE: Record<number, string> = { 0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 48: "Fog", 51: "Drizzle", 53: "Drizzle", 55: "Drizzle", 61: "Rain", 63: "Rain", 65: "Heavy rain", 71: "Snow", 73: "Snow", 75: "Snow", 80: "Showers", 81: "Showers", 82: "Showers", 95: "Storm", 96: "Storm", 99: "Storm" };
 
-type Tile = { key: string; icon: typeof Sparkles; label: string; href: string };
+type Tile = { key: string; icon: typeof Globe; label: string; href: string };
 
 // NextEdge Access Solutions (NEAS) public profiles.
 const TILES: Tile[] = [
-  { key: "linkedin",  icon: Linkedin,  label: "NEAS on LinkedIn",  href: "https://www.linkedin.com/company/nextedge-access-solutions-neas" },
-  { key: "facebook",  icon: Facebook,  label: "NEAS on Facebook",  href: "https://www.facebook.com/NextEdgeAccessSolutionss" },
-  { key: "instagram", icon: Instagram, label: "NEAS on Instagram", href: "https://www.instagram.com/nextedgeaccesssolutions" },
-  { key: "youtube",   icon: Youtube,   label: "NEAS on YouTube",   href: "https://www.youtube.com/@NextEdgeAccessSolutions" },
+  { key: "linkedin",  icon: Globe,  label: "NEAS on LinkedIn",  href: "https://www.linkedin.com/company/nextedge-access-solutions-neas" },
+  { key: "facebook",  icon: Globe,  label: "NEAS on Facebook",  href: "https://www.facebook.com/NextEdgeAccessSolutionss" },
+  { key: "instagram", icon: Globe, label: "NEAS on Instagram", href: "https://www.instagram.com/nextedgeaccesssolutions" },
+  { key: "youtube",   icon: Globe,   label: "NEAS on YouTube",   href: "https://www.youtube.com/@NextEdgeAccessSolutions" },
 ];
 
 function Clock() {
@@ -101,7 +101,7 @@ export default function ApexOverviewPanel() {
     color: "rgba(240,237,232,0.9)", textDecoration: "none", width: "100%",
   };
 
-  const inner = (Icon: typeof Sparkles, label: string, external?: boolean) => (
+  const inner = (Icon: typeof Globe, label: string, external?: boolean) => (
     <>
       <span style={{ display: "flex", color: ACCENT }}><Icon size={16} /></span>
       <span style={{ flex: 1, fontSize: 11.5, letterSpacing: "0.05em", lineHeight: 1.2 }}>{label}</span>
