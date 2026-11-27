@@ -26,3 +26,17 @@ This feature adds a read-only technical SEO audit to NEAS APEX. It audits the ap
 
 ## Future Search Console/Bing connector
 Private search performance requires explicit administrator OAuth/API credentials and verified property ownership. This PR deliberately does not request tokens, change Google/Bing accounts, or store credentials. A follow-up can add server-side encrypted token storage after the owner approves the auth flow and secret location.
+
+## Search Console reporting
+- `GET /api/admin/seo/search-console?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`
+- Requires the existing NEAS admin session and `giie:public:search` scope.
+- Returns up to 250 query rows and 250 page rows for the requested date range.
+- Date ranges are limited to 90 days; the default is 28 days ending three days before the current date.
+- Uses Google's `webmasters.readonly` OAuth scope. It does not submit URLs or sitemaps, change properties, or write to a database.
+
+## Required server-side configuration
+- `GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON`: service-account JSON stored only as a server-side secret.
+- `GOOGLE_SEARCH_CONSOLE_SITE_URL`: `https://www.nextedge-access-solutions.com/` or `sc-domain:nextedge-access-solutions.com`.
+- Share the verified Search Console property with the service-account email using read-only access.
+
+No new npm dependency or database migration is required. Missing credentials leave the connector disabled. Google API access remains subject to Google quotas and terms; free access is not unlimited.
