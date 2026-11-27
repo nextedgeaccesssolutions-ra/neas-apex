@@ -16,10 +16,9 @@ playwright-report
 .idea
 .DS_Store
 
-# Environment files: keep only documented examples in the build context.
+# Environment files: keep only the documented Docker example in the build context.
 .env
 .env.*
-!.env.example
 !.env.docker.example
 
 # Private keys, certificates, and logs must never enter the Docker build context.
