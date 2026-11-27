@@ -1,0 +1,48 @@
+name: NEAS GIIE CMS Bridge Validation
+
+on:
+  push:
+    branches:
+      - main
+      - feature/giie-cms-publisher-bridge
+  pull_request:
+    branches:
+      - main
+      - feature/giie-commercial-opportunity-engine
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neas-giie-cms-bridge-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: CMS bridge tests, type-check, audit and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run unit and security regression tests
+        run: npm test
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Dependency security audit
+        run: npm audit --audit-level=high
+
+      - name: Build Next.js application
+        run: npm run build
